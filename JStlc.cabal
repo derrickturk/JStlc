@@ -1,0 +1,27 @@
+name:                JStlc
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/JStlc#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2018 Author name here
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+executable JStlc
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , text >= 1.2 && < 1.3
+  other-modules:       Language.JStlc.Syntax
+                     , Language.JStlc.Eval
+                     , Language.JStlc.Compile
+  exposed-modules:     Language.JStlc.Syntax
+                     , Language.JStlc.Eval
+                     , Language.JStlc.Compile
