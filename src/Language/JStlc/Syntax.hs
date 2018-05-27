@@ -4,7 +4,7 @@
 module Language.JStlc.Syntax (
     Ty(..)
   , STy(..)
-  , LitString
+  , LitString(..)
   , ValTy(..)
   , Ix(..)
   , Term(..)
