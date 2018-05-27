@@ -26,40 +26,23 @@ lookup :: Ix as a -> NameCtxt as -> T.Text
 lookup IZ (x :> xs) = x
 lookup (IS i) (_ :> xs) = lookup i xs
 
--- TODO: this machinery seems horrible, maybe we can get away without it
-
-class Sing (a :: Ty) where
-  sing :: STy a
-
-instance Sing IntTy where
-  sing = SIntTy
-
-instance Sing BoolTy where
-  sing = SBoolTy
-
-instance Sing StringTy where
-  sing = SStringTy
-
-instance (Sing a, Sing b) => Sing (FnTy a b) where
-  sing = SFnTy sing sing
-
-instance Sing a => Sing (OptionTy a) where
-  sing = SOptionTy sing
-
-instance Sing a => Sing (ListTy a) where
-  sing = SListTy sing
-
-compile :: Sing a => Term '[] a -> JS
+compile :: Term '[] a -> JS
 compile = compile' CNil
 
-compile' :: Sing a => NameCtxt as -> Term as a -> JS
+compile' :: NameCtxt as -> Term as a -> JS
 compile' c (Var i) = JS $ lookup i c
-compile' _ (Lit v) = jsLit sing v
+compile' _ (Lit v) = jsLit sTy v
 compile' c (Lam x _ body) = JS $
   "function (" <> T.pack x <> ") { return " <>
   toText (compile' ((T.pack x) :> c) body) <> "; }"
 compile' c (App f x) = JS $ toText (compile' c f) <> "(" <>
   toText (compile' c x) <> ")"
+compile' c None = JS "null"
+compile' c (Some t) = compile' c t
+compile' c Nil = JS "[]"
+compile' c (Cons x Nil) = JS $ "[" <> toText (compile' c x) <> "]"
+compile' c (Cons x xs) = JS $ "([" <> toText (compile' c x) <>
+  "]).concat(" <> toText (compile' c xs) <> ")"
 
 jsLit :: STy a -> ValTy a -> JS
 jsLit SIntTy n = JS $ T.pack $ show n
