@@ -3,8 +3,10 @@
 module Language.JStlc.JS (
     JS(..)
   , ToJS(..)
+  , emit
 ) where
 
+import Data.Monoid ((<>))
 import qualified Data.Text as T
 
 data JS =
@@ -22,15 +24,14 @@ class ToJS a where
   toJS :: a -> JS
 
 instance ToJS Bool where
-  toJS True = JSVar "true"
-  toJS False = JSVar "true"
+  toJS = JSBool
 
 instance ToJS Int where
   toJS = JSNumber . fromIntegral
 
 instance ToJS T.Text where
   toJS = JSString . escape where
-    escape = id -- TODO
+    escape = T.replace "\"" "\\\""
 
 instance ToJS a => ToJS (Maybe a) where
   toJS Nothing = JSVar "null"
@@ -38,3 +39,18 @@ instance ToJS a => ToJS (Maybe a) where
 
 instance ToJS a => ToJS [a] where
   toJS = JSArray . fmap toJS
+
+emit :: JS -> T.Text
+emit (JSBool True) = "true"
+emit (JSBool False) = "false"
+emit (JSNumber x) = T.pack $ show x
+emit (JSString s) = T.cons '\"' $ T.snoc s '\"'
+emit (JSVar x) = x
+emit (JSArray xs) = T.cons '[' $ T.snoc (T.intercalate ", " $ fmap emit xs) ']'
+emit (JSLambda x body) =
+  "function (" <> x <> ") { return " <> emit body <> "; }"
+emit (JSCall func args) =
+  "(" <> emit func <> ")(" <> T.intercalate ", " (fmap emit args) <> ")"
+emit (JSMethod obj func args) =
+  "(" <> emit obj <> ")."<> func <> "("
+  <> T.intercalate ", " (fmap emit args) <> ")"
