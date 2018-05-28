@@ -3,3 +3,4 @@ module Language.JStlc.Internal (
 ) where
 
 newtype LitString = LitString { toString :: String }
+  deriving Show
