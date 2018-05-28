@@ -4,13 +4,13 @@
 module Language.JStlc.Syntax (
     Ty(..)
   , STy(..)
-  , LitString(..)
   , ValTy(..)
   , Ix(..)
   , Term(..)
 ) where
 
-import Language.JStlc.Internal
+import qualified Data.Text as T
+
 import Language.JStlc.JS
 
 -- TODO: could be a lark to use a Vect for the type context
@@ -39,7 +39,7 @@ data STy :: Ty -> * where
 type family ValTy (a :: Ty) = v | v -> a where
   ValTy 'IntTy = Int
   ValTy 'BoolTy = Bool
-  ValTy 'StringTy = LitString
+  ValTy 'StringTy = T.Text
   ValTy ('FnTy a b) = ValTy a -> ValTy b
   ValTy ('OptionTy a) = Maybe (ValTy a)
   ValTy ('ListTy a) = [ValTy a]
@@ -51,7 +51,7 @@ data Ix :: [Ty] -> Ty -> * where
 data Term :: [Ty] -> Ty -> * where
   Var :: Ix ts a -> Term ts a
   Lit :: (Show (ValTy a), ToJS (ValTy a)) => ValTy a -> Term ts a
-  Lam :: String -> STy a -> Term (a ': ts) b -> Term ts (FnTy a b)
+  Lam :: T.Text -> STy a -> Term (a ': ts) b -> Term ts (FnTy a b)
   App :: Term ts (FnTy a b) -> Term ts a -> Term ts b
   None :: Term ts (OptionTy a)
   Some :: Term ts a -> Term ts (OptionTy a)
@@ -76,7 +76,7 @@ instance Show (Term as a) where
   show (Var i) = "Var " ++ show i
   show (Lit v) = show v
   show (Lam x ty body) =
-    "Lam " ++ x ++ " " ++ show ty ++ " (" ++ show body ++ ")"
+    "Lam " ++ show x ++ " " ++ show ty ++ " (" ++ show body ++ ")"
   show (App x y) = "App (" ++ show x ++ ") (" ++ show y ++ ")"
   show None = "None"
   show (Some x) = "Some (" ++ show x ++ ")"

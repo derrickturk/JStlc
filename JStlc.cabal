@@ -19,13 +19,11 @@ executable JStlc
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , text >= 1.2 && < 1.3
-  other-modules:       Language.JStlc.Internal
-                     , Language.JStlc.Syntax
+  other-modules:       Language.JStlc.Syntax
                      , Language.JStlc.Eval
                      , Language.JStlc.JS
                      , Language.JStlc.Compile
-  exposed-modules:     Language.JStlc.Internal
-                     , Language.JStlc.Syntax
+  exposed-modules:     Language.JStlc.Syntax
                      , Language.JStlc.Eval
                      , Language.JStlc.JS
                      , Language.JStlc.Compile

@@ -7,8 +7,6 @@ module Language.JStlc.JS (
 
 import qualified Data.Text as T
 
-import Language.JStlc.Internal
-
 data JS =
     JSBool Bool
   | JSNumber Double
@@ -30,8 +28,8 @@ instance ToJS Bool where
 instance ToJS Int where
   toJS = JSNumber . fromIntegral
 
-instance ToJS LitString where
-  toJS = JSString . T.pack . escape . toString where
+instance ToJS T.Text where
+  toJS = JSString . escape where
     escape = id -- TODO
 
 instance ToJS a => ToJS (Maybe a) where

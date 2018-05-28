@@ -31,8 +31,7 @@ compile = compile' CNil
 compile' :: NameCtxt as -> Term as a -> JS
 compile' c (Var i) = JSVar $ lookup i c
 compile' _ (Lit v) = toJS v
-compile' c (Lam x _ body) =
-  JSLambda (T.pack x) (compile' (T.pack x :> c) body)
+compile' c (Lam x _ body) = JSLambda x (compile' (x :> c) body)
 compile' c (App f x) = JSCall (compile' c f) [(compile' c x)]
 compile' c None = JSVar "null"
 compile' c (Some t) = compile' c t
