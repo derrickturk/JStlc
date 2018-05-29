@@ -27,3 +27,4 @@ executable JStlc
                      , Language.JStlc.Eval
                      , Language.JStlc.JS
                      , Language.JStlc.Compile
+  ghc-options:         -Wall -O2

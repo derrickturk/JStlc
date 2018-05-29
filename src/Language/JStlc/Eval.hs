@@ -17,7 +17,7 @@ data Ctxt :: [Ty] -> * where
 infixr 5 :>
 
 lookup :: Ix as a -> Ctxt as -> ValTy a
-lookup IZ (x :> xs) = x
+lookup IZ (x :> _) = x
 lookup (IS i) (_ :> xs) = lookup i xs
 
 eval :: Term '[] a -> ValTy a
