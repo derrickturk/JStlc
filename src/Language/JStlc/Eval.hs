@@ -7,6 +7,7 @@ module Language.JStlc.Eval (
 ) where
 
 import Prelude hiding (lookup)
+import Data.Monoid ((<>))
 
 import Language.JStlc.Syntax
 
@@ -31,3 +32,19 @@ eval' _ None = Nothing
 eval' c (Some x) = Just $ eval' c x
 eval' _ Nil = []
 eval' c (Cons x xs) = (eval' c x):(eval' c xs)
+eval' c (BinOpApp op x y) = evalBinOp op (eval' c x) (eval' c y)
+eval' c (IfThenElse cond t f) = if eval' c cond then eval' c t else eval' c f
+eval' c (FoldL f x xs) = foldl (eval' c f) (eval' c x) (eval' c xs)
+eval' c (MapOption f x) = fmap (eval' c f) (eval' c x)
+eval' c (MapList f x) = fmap (eval' c f) (eval' c x)
+
+evalBinOp :: BinOp a b -> ValTy a -> ValTy a -> ValTy b
+evalBinOp Add x y = x + y
+evalBinOp Sub x y = x - y
+evalBinOp Mul x y = x * y
+evalBinOp Div x y = x `div` y
+evalBinOp Or x y = x || y -- saved by laziness
+evalBinOp And x y = x && y
+evalBinOp StrCat x y = x <> y
+evalBinOp Append x y = x <> y
+evalBinOp Eq x y = x == y

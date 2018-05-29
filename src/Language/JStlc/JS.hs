@@ -18,6 +18,9 @@ data JS =
   | JSLambda T.Text JS
   | JSCall JS [JS]
   | JSMethod JS T.Text [JS]
+  | JSCondExpr JS JS JS
+  | JSUnOpApp T.Text JS
+  | JSBinOpApp T.Text JS JS
   deriving Show
 
 class ToJS a where
@@ -54,3 +57,7 @@ emit (JSCall func args) =
 emit (JSMethod obj func args) =
   "(" <> emit obj <> ")."<> func <> "("
   <> T.intercalate ", " (fmap emit args) <> ")"
+emit (JSCondExpr cond t f) =
+  "(" <> emit cond <> ") ? (" <> emit t <> ") : (" <> emit f <> ")"
+emit (JSUnOpApp op x) = op <> "(" <> emit x <> ")"
+emit (JSBinOpApp op x y) = "(" <> emit x <> ") " <> op <> " (" <> emit y <> ")"
