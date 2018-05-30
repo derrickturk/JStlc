@@ -62,7 +62,7 @@ check' n c (UCons x xs) = do
   runExTerm exX $
     \s1 t1 -> runExTerm exXs $
       \s2 t2 -> case s2 of
-        SListTy s2' -> case eqSTy s1 s2' of
+        SListTy s2' -> case testEquality s1 s2' of
           Just Refl -> Right $ ExTerm (\k -> k (SListTy s2') (Cons t1 t2))
           _ -> Left $ Mismatch (unSTy s2') (unSTy s1)
         _ -> Left $ ExpectedListType (unSTy s2)

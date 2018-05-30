@@ -6,7 +6,6 @@ module Language.JStlc.Syntax (
   , STy(..)
   , ISTy(..)
   , unSTy
-  , eqSTy
   , ValTy
   , Ix(..)
   , BinOp(..)
@@ -65,17 +64,17 @@ unSTy (SFnTy a b) = FnTy (unSTy a) (unSTy b)
 unSTy (SOptionTy a) = OptionTy (unSTy a)
 unSTy (SListTy a) = ListTy (unSTy a)
 
-eqSTy :: STy a -> STy b -> Maybe (a :~: b)
-eqSTy SIntTy SIntTy = Just Refl
-eqSTy SBoolTy SBoolTy = Just Refl
-eqSTy SStringTy SStringTy = Just Refl
-eqSTy (SFnTy a b) (SFnTy c d)
-  | Just Refl <- eqSTy a c, Just Refl <- eqSTy b d = Just Refl
-eqSTy (SOptionTy a) (SOptionTy b)
-  | Just Refl <- eqSTy a b = Just Refl
-eqSTy (SListTy a) (SListTy b)
-  | Just Refl <- eqSTy a b = Just Refl
-eqSTy _ _ = Nothing
+instance TestEquality STy where
+  testEquality SIntTy SIntTy = Just Refl
+  testEquality SBoolTy SBoolTy = Just Refl
+  testEquality SStringTy SStringTy = Just Refl
+  testEquality (SFnTy a b) (SFnTy c d)
+    | Just Refl <- testEquality a c, Just Refl <- testEquality b d = Just Refl
+  testEquality (SOptionTy a) (SOptionTy b)
+    | Just Refl <- testEquality a b = Just Refl
+  testEquality (SListTy a) (SListTy b)
+    | Just Refl <- testEquality a b = Just Refl
+  testEquality _ _ = Nothing
 
 type family ValTy (a :: Ty) = v | v -> a where
   ValTy 'IntTy = Int
