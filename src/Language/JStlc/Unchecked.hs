@@ -21,7 +21,7 @@ data UTerm :: Nat -> * where
   USome :: UTerm n -> UTerm n
   UNil :: STy a -> UTerm n
   UCons :: UTerm n -> UTerm n -> UTerm n
-  UBinOpApp :: BinOp a b -> UTerm n -> UTerm n -> UTerm n
-  UIfThenElse :: UTerm n -> UTerm n -> UTerm n
+  UBinOpApp :: (ISTy a, ISTy b) => BinOp a b -> UTerm n -> UTerm n -> UTerm n
+  UIfThenElse :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UFoldL :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UMap :: UTerm n -> UTerm n -> UTerm n
