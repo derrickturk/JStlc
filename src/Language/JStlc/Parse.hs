@@ -72,5 +72,5 @@ baseTy = lexeme $
   <|> BoolTy <$ "Bool"
   <|> StringTy <$ "String"
   <|> ListTy <$> enclosed "[" "]" ty
-  <|> OptionTy <$> (lexeme "?" *> ty)
+  <|> OptionTy <$> (lexeme "?" *> baseTy)
   <|> enclosed "(" ")" ty

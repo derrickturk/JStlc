@@ -6,6 +6,8 @@ module Main where
 import qualified Data.Text.IO as TIO
 
 import Language.JStlc.Types
+import Language.JStlc.Unchecked
+import Language.JStlc.Parse
 import Language.JStlc.Syntax
 import Language.JStlc.Eval
 import Language.JStlc.Compile

@@ -78,7 +78,7 @@ instance Show Ty where
   show StringTy = "StringTy"
   show (FnTy a b) = "FnTy (" ++ show a ++ ") (" ++ show b ++ ")"
   show (OptionTy a) = "OptionTy (" ++ show a ++ ")"
-  show (ListTy a) = "OptionTy (" ++ show a ++ ")"
+  show (ListTy a) = "ListTy (" ++ show a ++ ")"
 
 instance Show (STy a) where
   show SIntTy = "SIntTy"
@@ -86,4 +86,4 @@ instance Show (STy a) where
   show SStringTy = "SStringTy"
   show (SFnTy a b) = "SFnTy (" ++ show a ++ ") (" ++ show b ++ ")"
   show (SOptionTy a) = "SOptionTy (" ++ show a ++ ")"
-  show (SListTy a) = "SOptionTy (" ++ show a ++ ")"
+  show (SListTy a) = "SListTy (" ++ show a ++ ")"

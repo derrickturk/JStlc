@@ -13,12 +13,8 @@ import Language.JStlc.Types
 import Language.JStlc.JS
 
 -- TODO: could be a lark to use a Vect for the type context
-{--
-data Nat :: * where
-  Z :: Nat
-  S :: Nat -> Nat
---}
 -- implementor's note: it was not, in fact, a lark
+
 data Ix :: [Ty] -> Ty -> * where
   IZ :: Ix (a ': as) a
   IS :: Ix as a -> Ix (b ': as) a
