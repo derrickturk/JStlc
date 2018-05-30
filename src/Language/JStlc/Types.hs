@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE DefaultSignatures #-}
 
 module Language.JStlc.Types (
     Ty(..)
@@ -10,6 +11,7 @@ module Language.JStlc.Types (
   , runExSTy
   , toExSTy
   , ValTy
+  , DisplayVal(..)
 ) where
 
 import qualified Data.Text as T
@@ -101,3 +103,23 @@ instance Show (STy a) where
   show (SFnTy a b) = "SFnTy (" ++ show a ++ ") (" ++ show b ++ ")"
   show (SOptionTy a) = "SOptionTy (" ++ show a ++ ")"
   show (SListTy a) = "SListTy (" ++ show a ++ ")"
+
+-- used to "render" value types e.g. in REPL, where possible
+class DisplayVal a where
+  displayVal :: a -> String
+  default displayVal :: Show a => a -> String
+  displayVal = show
+instance DisplayVal Integer where
+instance DisplayVal Bool where
+instance DisplayVal T.Text where
+instance DisplayVal (a -> b) where
+  displayVal _ = "<function>"
+instance DisplayVal a => DisplayVal (Maybe a) where
+  displayVal (Just x) = "Just (" ++ displayVal x ++ ")"
+  displayVal Nothing = "Nothing"
+instance DisplayVal a => DisplayVal [a] where
+  displayVal [] = "[]"
+  displayVal (x:xs) = "[" ++ displayVal x ++ go xs ++ "]" where
+    go :: DisplayVal a => [a] -> String
+    go [] = ""
+    go (y:ys) = ", " ++ displayVal y ++ go ys

@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs, DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -9,6 +9,7 @@ import Language.JStlc.Types
 import Language.JStlc.Unchecked
 import Language.JStlc.Parse
 import Language.JStlc.Syntax
+import Language.JStlc.Check
 import Language.JStlc.Eval
 import Language.JStlc.Compile
 import Language.JStlc.JS
@@ -42,3 +43,36 @@ main = do
   print js2
   putStr "=emit=> "
   TIO.putStrLn $ emit js2
+
+  repl
+
+-- use explicit split on type to prove Show-ability
+evalShow :: STy a -> Term '[] a -> String
+evalShow SIntTy t = displayVal (eval t)
+evalShow SBoolTy t = displayVal (eval t)
+evalShow SStringTy t = displayVal (eval t)
+evalShow (SFnTy _ _) t = displayVal (eval t)
+evalShow (SOptionTy _) t = "an option (TODO)"
+evalShow (SListTy s) t = "a list (TODO)"
+
+repl :: IO ()
+repl = do
+  line <- TIO.getLine
+  if line == "quit"
+    then return ()
+    else do
+      let parsed = parse term "(REPL)" line
+      case parsed of
+        Left e -> print e >> repl
+        Right ut -> case check ut of
+          Left e -> print e >> repl
+          Right exT -> runExTerm exT $ \s t -> do
+            putStrLn $ show t ++ " : " ++ show (unSTy s)
+            putStr "=eval=> "
+            print $ evalShow s t
+            let js = compile t
+            putStr "=compile=> "
+            print js
+            putStr "=emit=> "
+            TIO.putStrLn $ emit js
+            repl

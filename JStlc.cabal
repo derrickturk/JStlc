@@ -30,4 +30,4 @@ executable JStlc
                      , Language.JStlc.Unchecked
                      , Language.JStlc.Check
                      , Data.Nat
-  ghc-options:         -Wall -O2
+  ghc-options:         -Wall -fno-warn-unused-do-bind -O2

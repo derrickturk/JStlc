@@ -5,6 +5,7 @@ module Language.JStlc.Parse (
   , ident
   , ty
   , term
+  , parse
   , parseTest
   , parseTest'
   , runParser
@@ -85,7 +86,7 @@ baseTy = lexeme $
   <|> BoolTy <$ "Bool"
   <|> StringTy <$ "String"
   <|> ListTy <$> enclosed "[" "]" ty
-  <|> OptionTy <$> (lexeme "?" *> baseTy)
+  <|> OptionTy <$> ("?" *> baseTy)
   <|> enclosed "(" ")" ty
 
 annotated :: Parser a -> Parser (a, Ty)
@@ -101,8 +102,33 @@ lit =  try (ULit <$> qString)
    <|> (ULit <$> bool)
    -- TODO literal lists
 
+lambda :: Parser (UTerm n)
+lambda = do
+  lexeme "\\"
+  (x, t) <- annotated ident
+  lexeme "=>"
+  body <- term
+  return $ runExSTy (toExSTy t) $ \s -> ULam x s body
+
+nonLRTerm :: Parser (UTerm n)
+nonLRTerm = 
+      try (UVar <$> ident)
+  <|> try lit
+  <|> try lambda
+  <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNone s)
+        <$> annotated "none")
+  <|> try (USome <$> (lexeme "some" *> space *> term))
+  <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNil s)
+        <$> annotated "nil")
+  <|> try (UIfThenElse <$> (lexeme "if" *> space *> term)
+                       <*> (lexeme "then" *> space *> term)
+                       <*> (lexeme "else" *> space *> term))
+  <|> try (UFoldL <$> (lexeme "foldl" *> space *> nonLRTerm)
+                  <*> nonLRTerm
+                  <*> term)
+  <|> try (UMap <$> (lexeme "map" *> space *> nonLRTerm) <*> term)
+  <|> lexeme (enclosed "(" ")" term)
+
 term :: Parser (UTerm n)
-term =  try (UVar <$> ident)
-    <|> try lit
-    <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNil s)
-          <$> annotated "nil")
+term =  try (binOpRec UApp nonLRTerm term)
+    <|> nonLRTerm
