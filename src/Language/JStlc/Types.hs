@@ -11,7 +11,7 @@ module Language.JStlc.Types (
   , runExSTy
   , toExSTy
   , ValTy
-  , DisplayVal(..)
+  , showVal
 ) where
 
 import qualified Data.Text as T
@@ -105,21 +105,14 @@ instance Show (STy a) where
   show (SListTy a) = "SListTy (" ++ show a ++ ")"
 
 -- used to "render" value types e.g. in REPL, where possible
-class DisplayVal a where
-  displayVal :: a -> String
-  default displayVal :: Show a => a -> String
-  displayVal = show
-instance DisplayVal Integer where
-instance DisplayVal Bool where
-instance DisplayVal T.Text where
-instance DisplayVal (a -> b) where
-  displayVal _ = "<function>"
-instance DisplayVal a => DisplayVal (Maybe a) where
-  displayVal (Just x) = "Just (" ++ displayVal x ++ ")"
-  displayVal Nothing = "Nothing"
-instance DisplayVal a => DisplayVal [a] where
-  displayVal [] = "[]"
-  displayVal (x:xs) = "[" ++ displayVal x ++ go xs ++ "]" where
-    go :: DisplayVal a => [a] -> String
-    go [] = ""
-    go (y:ys) = ", " ++ displayVal y ++ go ys
+showVal :: STy a -> ValTy a -> String
+showVal SIntTy n = show n
+showVal SBoolTy b = show b
+showVal SStringTy s = show s
+showVal (SFnTy a b) _ = "<function>"
+showVal (SOptionTy _) Nothing = "Nothing"
+showVal (SOptionTy a) (Just x) = "Just (" ++ showVal a x ++ ")"
+showVal (SListTy _) [] = "[]"
+showVal (SListTy a) (x:xs) = "[" ++ showVal a x ++ go a xs ++ "]" where
+  go _ [] = ""
+  go a (x:xs) = ", " ++ showVal a x ++ go a xs
