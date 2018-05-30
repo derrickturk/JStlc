@@ -43,10 +43,10 @@ compile' c (Var i) = JSVar $ lookup i c
 compile' _ (Lit v) = toJS v
 compile' c (Lam x _ body) = JSLambda x (compile' (x :> c) body)
 compile' c (App f x) = JSCall (compile' c f) [(compile' c x)]
-compile' _ None = JSVar "null"
+compile' _ (None _) = JSVar "null"
 compile' c (Some t) = compile' c t
-compile' _ Nil = JSArray []
-compile' c (Cons x Nil) = JSArray [compile' c x]
+compile' _ (Nil _) = JSArray []
+compile' c (Cons x (Nil _)) = JSArray [compile' c x]
 compile' c (Cons x xs) =
   JSMethod (JSArray [compile' c x]) "concat" [(compile' c xs)]
 compile' c (BinOpApp op x y) = case op of

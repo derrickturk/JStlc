@@ -5,6 +5,7 @@ module Language.JStlc.Syntax (
     Ty(..)
   , STy(..)
   , ISTy(..)
+  , unSTy
   , ValTy
   , Ix(..)
   , BinOp(..)
@@ -54,6 +55,14 @@ instance ISTy a => ISTy ('OptionTy a) where
 instance ISTy a => ISTy ('ListTy a) where
   sTy = SListTy sTy
 
+unSTy :: STy a -> Ty
+unSTy SIntTy = IntTy
+unSTy SBoolTy = BoolTy
+unSTy SStringTy = StringTy
+unSTy (SFnTy a b) = FnTy (unSTy a) (unSTy b)
+unSTy (SOptionTy a) = OptionTy (unSTy a)
+unSTy (SListTy a) = ListTy (unSTy a)
+
 type family ValTy (a :: Ty) = v | v -> a where
   ValTy 'IntTy = Int
   ValTy 'BoolTy = Bool
@@ -82,9 +91,9 @@ data Term :: [Ty] -> Ty -> * where
   Lit :: (Show (ValTy a), ToJS (ValTy a)) => ValTy a -> Term ts a
   Lam :: T.Text -> STy a -> Term (a ': ts) b -> Term ts ('FnTy a b)
   App :: Term ts ('FnTy a b) -> Term ts a -> Term ts b
-  None :: Term ts ('OptionTy a)
+  None :: STy ('OptionTy a) -> Term ts ('OptionTy a)
   Some :: Term ts a -> Term ts ('OptionTy a)
-  Nil :: Term ts ('ListTy a)
+  Nil :: STy ('ListTy a) -> Term ts ('ListTy a)
   Cons :: Term ts a -> Term ts ('ListTy a) -> Term ts ('ListTy a)
   BinOpApp :: BinOp a b -> Term ts a -> Term ts a -> Term ts b
   IfThenElse :: Term ts 'BoolTy -> Term ts a -> Term ts a -> Term ts a
@@ -138,9 +147,9 @@ instance Show (Term as a) where
   show (Lam x ty body) =
     "Lam " ++ show x ++ " " ++ show ty ++ " (" ++ show body ++ ")"
   show (App x y) = "App (" ++ show x ++ ") (" ++ show y ++ ")"
-  show None = "None"
+  show (None ty) = "None " ++ show ty
   show (Some x) = "Some (" ++ show x ++ ")"
-  show Nil = "Nil"
+  show (Nil ty) = "Nil " ++ show ty
   show (Cons x xs) = "Cons (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (BinOpApp op x y) =
     "BinOpApp " ++ show op ++ "(" ++ show x ++ ") (" ++ show y ++ ")"
