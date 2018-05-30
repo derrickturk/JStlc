@@ -10,6 +10,7 @@ module Language.JStlc.Check (
 import qualified Data.Text as T
 
 import Data.Nat
+import Data.Type.Equality
 import Language.JStlc.Unchecked
 import Language.JStlc.Syntax
 
@@ -49,7 +50,19 @@ check' c (UVar x) = case varIx c x of
 check' _ _ (ULit v) = Right $ ExTerm (\k -> k sTy (Lit v))
 check' _ _ (UNone ty@(SOptionTy _)) = Right $ ExTerm (\k -> k ty (None ty))
 check' _ _ (UNone ty) = Left $ ExpectedOptionType (unSTy ty)
-check' n c (USome x) = case check' n c x of
-  Left e -> Left e
-  Right exT -> runExTerm exT $
+check' n c (USome x) = do
+  exX <- check' n c x
+  runExTerm exX $
     \s t -> Right (ExTerm (\k -> k (SOptionTy s) (Some t)))
+check' _ _ (UNil ty@(SListTy _)) = Right $ ExTerm (\k -> k ty (Nil ty))
+check' _ _ (UNil ty) = Left $ ExpectedListType (unSTy ty)
+check' n c (UCons x xs) = do
+  exX <- check' n c x
+  exXs <- check' n c xs
+  runExTerm exX $
+    \s1 t1 -> runExTerm exXs $
+      \s2 t2 -> case s2 of
+        SListTy s2' -> case eqSTy s1 s2' of
+          Just Refl -> Right $ ExTerm (\k -> k (SListTy s2') (Cons t1 t2))
+          _ -> Left $ Mismatch (unSTy s2') (unSTy s1)
+        _ -> Left $ ExpectedListType (unSTy s2)

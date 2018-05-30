@@ -20,7 +20,7 @@ data UTerm :: Nat -> * where
   UNone :: STy a -> UTerm n
   USome :: UTerm n -> UTerm n
   UNil :: STy a -> UTerm n
-  UCons :: UTerm n -> UTerm n
+  UCons :: UTerm n -> UTerm n -> UTerm n
   UBinOpApp :: BinOp a b -> UTerm n -> UTerm n -> UTerm n
   UIfThenElse :: UTerm n -> UTerm n -> UTerm n
   UFoldL :: UTerm n -> UTerm n -> UTerm n -> UTerm n
