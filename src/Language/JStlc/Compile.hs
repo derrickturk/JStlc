@@ -12,8 +12,9 @@ module Language.JStlc.Compile (
 import Prelude hiding (lookup)
 import qualified Data.Text as T
 
-import Language.JStlc.JS
+import Language.JStlc.Types
 import Language.JStlc.Syntax
+import Language.JStlc.JS
 
 data NameCtxt :: [Ty] -> * where
   CNil :: NameCtxt '[]

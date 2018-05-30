@@ -5,6 +5,7 @@ module Main where
 
 import qualified Data.Text.IO as TIO
 
+import Language.JStlc.Types
 import Language.JStlc.Syntax
 import Language.JStlc.Eval
 import Language.JStlc.Compile

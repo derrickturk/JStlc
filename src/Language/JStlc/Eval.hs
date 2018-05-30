@@ -9,6 +9,7 @@ module Language.JStlc.Eval (
 import Prelude hiding (lookup)
 import Data.Monoid ((<>))
 
+import Language.JStlc.Types
 import Language.JStlc.Syntax
 
 data Ctxt :: [Ty] -> * where

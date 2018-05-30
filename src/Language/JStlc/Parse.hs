@@ -10,6 +10,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 
+import Language.JStlc.Types
 import Language.JStlc.Unchecked
 
 type Parser = Parsec Void T.Text
@@ -42,5 +43,34 @@ keywords = [ "if"
            , "in"
            , "fix"
            , "map"
-           , "fold"
+           , "foldl"
            ]
+
+ident :: Parser T.Text
+ident = lexeme $ do
+  var <- T.pack <$> ((:) <$> letterChar <*> many alphaNumChar)
+  if var `elem` keywords
+    then failure
+      (Just $ Label $ NE.fromList "keyword")
+      (S.singleton $ Label $ NE.fromList "identifier")
+    else return var
+
+binOpRec :: (a -> b -> a) -> Parser a -> Parser b -> Parser a
+binOpRec f base rest = foldl f <$> base <*> some rest
+
+binOpsRec :: Parser (a -> b -> a) -> Parser a -> Parser b -> Parser a
+binOpsRec op base rest =
+  foldl (\b (o, r) -> o b r) <$> base <*> some ((,) <$> op <*> rest)
+
+ty :: Parser Ty
+ty =  try (binOpRec FnTy baseTy (lexeme "->" *> ty))
+  <|> baseTy
+
+baseTy :: Parser Ty
+baseTy = lexeme $
+      IntTy <$ "Int"
+  <|> BoolTy <$ "Bool"
+  <|> StringTy <$ "String"
+  <|> ListTy <$> enclosed "[" "]" ty
+  <|> OptionTy <$> (lexeme "?" *> ty)
+  <|> enclosed "(" ")" ty

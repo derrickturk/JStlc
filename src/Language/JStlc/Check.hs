@@ -11,6 +11,8 @@ import qualified Data.Text as T
 
 import Data.Nat
 import Data.Type.Equality
+
+import Language.JStlc.Types
 import Language.JStlc.Unchecked
 import Language.JStlc.Syntax
 

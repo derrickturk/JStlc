@@ -8,7 +8,8 @@ module Language.JStlc.Unchecked (
 import qualified Data.Text as T
 
 import Data.Nat
-import Language.JStlc.Syntax
+import Language.JStlc.Types
+import Language.JStlc.Syntax (BinOp)
 import Language.JStlc.JS
 
 -- unchecked terms in a context of given depth
