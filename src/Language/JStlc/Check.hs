@@ -134,6 +134,25 @@ check' n c (UFoldL f x xs) = do
         _ -> Left $ ExpectedFnType (unSTy sBA)
       _ -> Left $ ExpectedFnType (unSTy sF)
 
+check' n c (UMap f x) = do
+  exF <- check' n c f
+  exX <- check' n c x
+  runExTerm exF $
+    \sF tF -> case sF of
+      SFnTy sA sB -> runExTerm exX $
+        \sX tX -> case sX of
+          SOptionTy sX' -> case testEquality sX' sA of
+            Just Refl -> Right $
+              ExTerm (\k -> k (SOptionTy sB) (MapOption tF tX)) 
+            _ -> Left $ Mismatch (OptionTy (unSTy sA)) (unSTy sX)
+          SListTy sX' -> case testEquality sX' sA of
+            Just Refl -> Right $
+              ExTerm (\k -> k (SListTy sB) (MapList tF tX)) 
+            _ -> Left $ Mismatch (ListTy (unSTy sA)) (unSTy sX)
+          -- this is a bit arbitrary
+          _ -> Left $ ExpectedListType (unSTy sX)
+      _ -> Left $ ExpectedFnType (unSTy sF)
+
 argTy :: ISTy a => BinOp a b -> STy a
 argTy _ = sTy
 
