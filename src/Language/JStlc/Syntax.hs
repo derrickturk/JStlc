@@ -156,7 +156,7 @@ instance Show (BinOp a b) where
 
 instance Show (Term as a) where
   show (Var i) = "Var " ++ show i
-  show (Lit v) = show v
+  show (Lit v) = "Lit " ++ show v
   show (Lam x ty body) =
     "Lam " ++ show x ++ " " ++ show ty ++ " (" ++ show body ++ ")"
   show (App x y) = "App (" ++ show x ++ ") (" ++ show y ++ ")"

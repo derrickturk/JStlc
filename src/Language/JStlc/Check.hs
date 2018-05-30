@@ -168,3 +168,13 @@ argTy _ = sTy
 
 resTy :: ISTy b => BinOp a b -> STy b
 resTy _ = sTy
+
+instance Show TypeError where
+  show (Mismatch e f) = "Mismatch (" ++ show e ++ ") (" ++ show f ++ ")"
+  show (UndefinedVar x) = "UndefinedVar " ++ show x
+  show (ExpectedFnType ty) = "ExpectedFnType (" ++ show ty ++ ")"
+  show (ExpectedOptionType ty) = "ExpectedOptionType (" ++ show ty ++ ")"
+  show (ExpectedListType ty) = "ExpectedListType (" ++ show ty ++ ")"
+
+instance Show (ExTerm ctxt) where
+  show exT = runExTerm exT $ \_ t -> show t
