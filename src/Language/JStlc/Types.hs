@@ -109,10 +109,10 @@ showVal :: STy a -> ValTy a -> String
 showVal SIntTy n = show n
 showVal SBoolTy b = show b
 showVal SStringTy s = show s
-showVal (SFnTy a b) _ = "<function>"
+showVal (SFnTy _ _) _ = "<function>"
 showVal (SOptionTy _) Nothing = "Nothing"
 showVal (SOptionTy a) (Just x) = "Just (" ++ showVal a x ++ ")"
 showVal (SListTy _) [] = "[]"
 showVal (SListTy a) (x:xs) = "[" ++ showVal a x ++ go a xs ++ "]" where
   go _ [] = ""
-  go a (x:xs) = ", " ++ showVal a x ++ go a xs
+  go t (y:ys) = ", " ++ showVal t y ++ go t ys
