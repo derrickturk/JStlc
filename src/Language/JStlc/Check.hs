@@ -36,18 +36,16 @@ data UNameCtxt :: Nat -> * where
   (:>) :: T.Text -> UNameCtxt n -> UNameCtxt ('S n)
 infixr 5 :>
 
-varIx :: UNameCtxt n -> T.Text -> Maybe (Ix as a)
-varIx = undefined
-
 check :: UTerm 'Z -> Either TypeError (ExTerm '[])
 check = check' CNil STyNil
 
 check' :: UNameCtxt n -> STyCtxt as -> UTerm n -> Either TypeError (ExTerm as)
-{--
-check' c (UVar x) = case varIx c x of
-  Just i -> Right $ \k -> k (Var i)
+
+check' n c (UVar x) = case varIx n c x of
+  Just exX -> runExIx exX $
+    \sX i -> Right $ ExTerm (\k -> k sX (Var i))
   Nothing -> Left $ UndefinedVar x
---}
+
 check' _ _ (ULit v) = Right $ ExTerm (\k -> k sTy (Lit v))
 
 check' n c (ULam x ty body) = do
@@ -152,6 +150,18 @@ check' n c (UMap f x) = do
           -- this is a bit arbitrary
           _ -> Left $ ExpectedListType (unSTy sX)
       _ -> Left $ ExpectedFnType (unSTy sF)
+
+newtype ExIx ctxt =
+  ExIx { runExIx :: forall r . (forall a . STy a -> Ix ctxt a -> r) -> r }
+
+varIx :: UNameCtxt n -> STyCtxt as -> T.Text -> Maybe (ExIx as)
+varIx CNil _ _ = Nothing 
+varIx _ STyNil _ = Nothing -- TODO: these cases unify with Vects
+varIx (x :> xs) (ty ::: tys) name = if name == x
+  then Just $ ExIx (\k -> k ty IZ)
+  else do
+    exIx <- varIx xs tys name
+    runExIx exIx $ \s i -> Just $ ExIx (\k -> k s (IS i)) 
 
 argTy :: ISTy a => BinOp a b -> STy a
 argTy _ = sTy
