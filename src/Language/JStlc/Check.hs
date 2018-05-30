@@ -17,6 +17,7 @@ import Language.JStlc.Syntax
 data TypeError :: * where
   Mismatch :: Ty -> Ty -> TypeError
   UndefinedVar :: T.Text -> TypeError
+  ExpectedFnType :: Ty -> TypeError
   ExpectedOptionType :: Ty -> TypeError
   ExpectedListType :: Ty -> TypeError
 
@@ -48,8 +49,23 @@ check' c (UVar x) = case varIx c x of
   Nothing -> Left $ UndefinedVar x
 --}
 check' _ _ (ULit v) = Right $ ExTerm (\k -> k sTy (Lit v))
--- Lam
--- App
+
+check' n c (ULam x ty body) = do
+  exBody <- check' (x :> n) (ty ::: c) body
+  runExTerm exBody $
+    \sBody tBody -> Right $ ExTerm (\k -> k (SFnTy ty sBody) (Lam x ty tBody))
+
+check' n c (UApp f x) = do
+  exF <- check' n c f
+  exX <- check' n c x
+  runExTerm exF $
+    \sF tF -> case sF of
+      SFnTy sA sB -> runExTerm exX $
+        \sX tX -> case testEquality sX sA of
+          Just Refl -> Right $ ExTerm (\k -> k sB (App tF tX))
+          _ -> Left $ Mismatch (unSTy sA) (unSTy sX)
+      _ -> Left $ ExpectedFnType (unSTy sF)
+
 check' _ _ (UNone ty@(SOptionTy _)) = Right $ ExTerm (\k -> k ty (None ty))
 check' _ _ (UNone ty) = Left $ ExpectedOptionType (unSTy ty)
 
@@ -96,6 +112,27 @@ check' n c (UIfThenElse b t f) = do
             Just Refl -> Right $ ExTerm (\k -> k sT (IfThenElse tB tT tF))
             _ -> Left $ Mismatch (unSTy sT) (unSTy sF)
       _ -> Left $ Mismatch BoolTy (unSTy sB)
+
+check' n c (UFoldL f x xs) = do
+  exF <- check' n c f
+  exX <- check' n c x
+  exXs <- check' n c xs
+  runExTerm exF $
+    \sF tF -> case sF of
+      SFnTy sA sBA -> case sBA of
+        SFnTy sB sA' -> case testEquality sA' sA of
+          Just Refl -> runExTerm exX $
+            \sX tX -> case testEquality sX sA of
+              Just Refl -> runExTerm exXs $
+                \sXs tXs -> case sXs of
+                  SListTy sElem -> case testEquality sElem sB of
+                    Just Refl -> Right $ ExTerm (\k -> k sA (FoldL tF tX tXs)) 
+                    _ -> Left $ Mismatch (ListTy (unSTy sB)) (unSTy sXs)
+                  _ -> Left $ Mismatch (ListTy (unSTy sB)) (unSTy sXs)
+              _ -> Left $ Mismatch (unSTy sA) (unSTy sX)
+          _ -> Left $ Mismatch (FnTy (unSTy sB) (unSTy sA)) (unSTy sBA)
+        _ -> Left $ ExpectedFnType (unSTy sBA)
+      _ -> Left $ ExpectedFnType (unSTy sF)
 
 argTy :: ISTy a => BinOp a b -> STy a
 argTy _ = sTy
