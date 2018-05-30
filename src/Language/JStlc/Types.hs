@@ -1,11 +1,14 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
-{-# LANGUAGE TypeOperators, FlexibleContexts #-}
+{-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
 
 module Language.JStlc.Types (
     Ty(..)
   , STy(..)
   , ISTy(..)
   , unSTy
+  , ExSTy
+  , runExSTy
+  , toExSTy
   , ValTy
 ) where
 
@@ -52,6 +55,17 @@ unSTy (SFnTy a b) = FnTy (unSTy a) (unSTy b)
 unSTy (SOptionTy a) = OptionTy (unSTy a)
 unSTy (SListTy a) = ListTy (unSTy a)
 
+newtype ExSTy = ExSTy { runExSTy :: forall r . (forall a . STy a -> r) -> r }
+
+toExSTy :: Ty -> ExSTy
+toExSTy IntTy = ExSTy ($ SIntTy)
+toExSTy BoolTy = ExSTy ($ SBoolTy)
+toExSTy StringTy = ExSTy ($ SStringTy)
+toExSTy (FnTy a b) = runExSTy (toExSTy a) $ \sA ->
+  runExSTy (toExSTy b) $ \sB -> ExSTy ($ (SFnTy sA sB))
+toExSTy (OptionTy a) = runExSTy (toExSTy a) $ \sA -> ExSTy ($ (SOptionTy sA))
+toExSTy (ListTy a) = runExSTy (toExSTy a) $ \sA -> ExSTy ($ (SListTy sA))
+
 instance TestEquality STy where
   testEquality SIntTy SIntTy = Just Refl
   testEquality SBoolTy SBoolTy = Just Refl
@@ -65,7 +79,7 @@ instance TestEquality STy where
   testEquality _ _ = Nothing
 
 type family ValTy (a :: Ty) = v | v -> a where
-  ValTy 'IntTy = Int
+  ValTy 'IntTy = Integer
   ValTy 'BoolTy = Bool
   ValTy 'StringTy = T.Text
   ValTy ('FnTy a b) = ValTy a -> ValTy b

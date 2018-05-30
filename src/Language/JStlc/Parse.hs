@@ -1,11 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.JStlc.Parse where
+module Language.JStlc.Parse (
+    Parser
+  , ident
+  , ty
+  , term
+  , parseTest
+  , parseTest'
+  , runParser
+  , runParser'
+) where
 
 import Data.Void (Void)
 import qualified Data.Text as T
 import Text.Megaparsec
 import Text.Megaparsec.Char
+import Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
@@ -30,8 +40,8 @@ integer = lexeme $ L.signed space L.decimal
 bool :: Parser Bool
 bool = lexeme $ True <$ "true" <|> False <$ "false"
 
-string :: Parser T.Text
-string = lexeme $ char '"' *> (T.pack <$> manyTill L.charLiteral (char '"'))
+qString :: Parser T.Text
+qString = lexeme $ char '"' *> (T.pack <$> manyTill L.charLiteral (char '"'))
 
 keywords :: [T.Text]
 keywords = [ "if"
@@ -41,6 +51,9 @@ keywords = [ "if"
            , "false"
            , "let"
            , "in"
+           , "some"
+           , "none"
+           , "nil"
            , "fix"
            , "map"
            , "foldl"
@@ -74,3 +87,22 @@ baseTy = lexeme $
   <|> ListTy <$> enclosed "[" "]" ty
   <|> OptionTy <$> (lexeme "?" *> baseTy)
   <|> enclosed "(" ")" ty
+
+annotated :: Parser a -> Parser (a, Ty)
+annotated p = do
+  x <- p
+  lexeme ":"
+  t <- ty
+  return (x, t)
+
+lit :: Parser (UTerm n)
+lit =  try (ULit <$> qString)
+   <|> try (ULit <$> integer)
+   <|> (ULit <$> bool)
+   -- TODO literal lists
+
+term :: Parser (UTerm n)
+term =  try (UVar <$> ident)
+    <|> try lit
+    <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNil s)
+          <$> annotated "nil")

@@ -3,7 +3,8 @@
 
 module Language.JStlc.Check (
     TypeError(..)
-  , ExTerm(..)
+  , ExTerm
+  , runExTerm
   , check
 ) where
 

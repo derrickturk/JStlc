@@ -19,7 +19,7 @@ example = App (Lam "x" SIntTy (Cons (Var IZ) (Lit [3, 2, 1])))
 
 example2 :: Term as ('OptionTy 'BoolTy)
 example2 = MapOption (Lam "x" SBoolTy (BinOpApp Or (Var IZ) (Lit True)))
-                     (Some (BinOpApp Eq (Lit (17 :: Int)) (Lit 21)))
+                     (Some (BinOpApp Eq (Lit (17 :: Integer)) (Lit 21)))
 
 main :: IO ()
 main = do

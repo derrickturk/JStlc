@@ -29,7 +29,7 @@ class ToJS a where
 instance ToJS Bool where
   toJS = JSBool
 
-instance ToJS Int where
+instance ToJS Integer where
   toJS = JSNumber . fromIntegral
 
 instance ToJS T.Text where
