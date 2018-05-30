@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTs, DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
