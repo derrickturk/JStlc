@@ -80,7 +80,7 @@ instance Show (Term as a) where
   show (Nil ty) = "Nil " ++ show ty
   show (Cons x xs) = "Cons (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (BinOpApp op x y) =
-    "BinOpApp " ++ show op ++ "(" ++ show x ++ ") (" ++ show y ++ ")"
+    "BinOpApp " ++ show op ++ " (" ++ show x ++ ") (" ++ show y ++ ")"
   show (IfThenElse cond t f) =
     "IfThenElse (" ++ show cond ++ ") (" ++ show t ++ ") (" ++ show f ++ ")"
   show (FoldL f x xs) =

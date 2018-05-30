@@ -3,6 +3,7 @@
 
 module Language.JStlc.Unchecked (
     UTerm(..)
+  , BinOp
 ) where
 
 import qualified Data.Text as T
@@ -38,7 +39,7 @@ instance Show (UTerm n) where
   show (UNil ty) = "UNil " ++ show ty
   show (UCons x xs) = "UCons (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (UBinOpApp op x y) =
-    "UBinOpApp " ++ show op ++ "(" ++ show x ++ ") (" ++ show y ++ ")"
+    "UBinOpApp " ++ show op ++ " (" ++ show x ++ ") (" ++ show y ++ ")"
   show (UIfThenElse cond t f) =
     "UIfThenElse (" ++ show cond ++ ") (" ++ show t ++ ") (" ++ show f ++ ")"
   show (UFoldL f x xs) =

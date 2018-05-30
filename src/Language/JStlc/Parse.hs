@@ -23,6 +23,7 @@ import qualified Data.List.NonEmpty as NE
 
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
+import Language.JStlc.Syntax
 
 type Parser = Parsec Void T.Text
 
@@ -72,10 +73,6 @@ ident = lexeme $ do
 binOpRec :: (a -> b -> a) -> Parser a -> Parser b -> Parser a
 binOpRec f base rest = foldl f <$> base <*> some rest
 
-binOpsRec :: Parser (a -> b -> a) -> Parser a -> Parser b -> Parser a
-binOpsRec op base rest =
-  foldl (\b (o, r) -> o b r) <$> base <*> some ((,) <$> op <*> rest)
-
 ty :: Parser Ty
 ty =  try (binOpRec FnTy baseTy (lexeme "->" *> ty))
   <|> baseTy
@@ -113,7 +110,6 @@ lambda = do
 nonLRTerm :: Parser (UTerm n)
 nonLRTerm = 
       try (UVar <$> ident)
-  <|> try lit
   <|> try lambda
   <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNone s)
         <$> annotated "none")
@@ -128,7 +124,34 @@ nonLRTerm =
                   <*> term)
   <|> try (UMap <$> (lexeme "map" *> space *> nonLRTerm) <*> term)
   <|> lexeme (enclosed "(" ")" term)
+  <|> try lit
+
+binOp :: BinOp a b -> T.Text -> Parser (BinOp a b)
+binOp op l = op <$ lexeme (string l)
+
+-- for operators which are a prefix of other operators
+binOpAmbPrefix :: BinOp a b -> T.Text -> Parser (BinOp a b)
+binOpAmbPrefix op l =
+  op <$ (lexeme $ try $ string l <* notFollowedBy punctuationChar)
+
+opTable :: [[Operator Parser (UTerm n)]]
+opTable = [ [ InfixL (UBinOpApp <$> binOp Mul "*")
+            , InfixL (UBinOpApp <$> binOp Div "/")
+            ]
+          , [ InfixL (UBinOpApp <$> binOpAmbPrefix Add "+")
+            , InfixL (UBinOpApp <$> binOp Sub "-")
+            ]
+          , [ InfixR (UCons <$ lexeme "::")
+            -- , InfixL (UBinOpApp <$> binOp Append "++")
+            , InfixL (UBinOpApp <$> binOpAmbPrefix StrCat "&")
+            ]
+          -- , [ InfixN (UBinOpApp <$> binOp Eq "==") ]
+          , [ InfixL (UBinOpApp <$> binOp And "&&") ]
+          , [ InfixL (UBinOpApp <$> binOp Or "||") ]
+          , [ InfixR (UApp <$ lexeme "$") ]
+          ]
 
 term :: Parser (UTerm n)
-term =  try (binOpRec UApp nonLRTerm term)
+term =  try (makeExprParser nonLRTerm opTable)
+    <|> try (binOpRec UApp nonLRTerm term)
     <|> nonLRTerm

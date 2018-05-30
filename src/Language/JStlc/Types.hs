@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
-{-# LANGUAGE DefaultSignatures #-}
 
 module Language.JStlc.Types (
     Ty(..)
