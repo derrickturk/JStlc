@@ -144,7 +144,7 @@ opTable = [ [ InfixL (UBinOpApp <$> binOp UMul "*")
             , InfixL (UBinOpApp <$> binOp UAppend "++")
             , InfixL (UBinOpApp <$> binOpAmbPrefix UStrCat "&")
             ]
-          -- , [ InfixN (UBinOpApp <$> binOp Eq "==") ]
+          , [ InfixN (UBinOpApp <$> binOp UEq "==") ]
           , [ InfixL (UBinOpApp <$> binOp UAnd "&&") ]
           , [ InfixL (UBinOpApp <$> binOp UOr "||") ]
           , [ InfixR (UApp <$ lexeme "$") ]
