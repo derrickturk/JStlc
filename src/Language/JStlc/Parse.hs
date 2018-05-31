@@ -5,11 +5,13 @@ module Language.JStlc.Parse (
   , ident
   , ty
   , term
+  , only
   , parse
   , parseTest
   , parseTest'
   , runParser
   , runParser'
+  , parseErrorPretty
 ) where
 
 import Data.Void (Void)
@@ -36,7 +38,9 @@ enclosed :: T.Text -> T.Text -> Parser a -> Parser a
 enclosed left right = between (symbol left) (symbol right)
 
 integer :: Parser Integer
-integer = lexeme $ L.signed space L.decimal
+integer = lexeme $
+      try $ enclosed "(" ")" (lexeme $ L.signed space L.decimal)
+  <|> L.decimal
 
 bool :: Parser Bool
 bool = lexeme $ True <$ "true" <|> False <$ "false"
@@ -122,8 +126,8 @@ nonLRTerm =
                   <*> nonLRTerm
                   <*> term)
   <|> try (UMap <$> (lexeme "map" *> space *> nonLRTerm) <*> term)
+  <|> try lit -- must precede ()-enclosed term
   <|> lexeme (enclosed "(" ")" term)
-  <|> try lit
 
 binOp :: UBinOp -> T.Text -> Parser UBinOp
 binOp op l = op <$ lexeme (string l)
@@ -150,7 +154,12 @@ opTable = [ [ InfixL (UBinOpApp <$> binOp UMul "*")
           , [ InfixR (UApp <$ lexeme "$") ]
           ]
 
+appTerm :: Parser (UTerm n)
+appTerm =  try (binOpRec UApp nonLRTerm nonLRTerm)
+       <|> nonLRTerm
+
 term :: Parser (UTerm n)
-term =  try (makeExprParser nonLRTerm opTable)
-    <|> try (binOpRec UApp nonLRTerm term)
-    <|> nonLRTerm
+term = makeExprParser appTerm opTable
+
+only :: Parser a -> Parser a
+only = (<* lexeme eof)

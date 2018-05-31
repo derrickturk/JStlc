@@ -29,9 +29,9 @@ repl = do
   if line == "quit"
     then return ()
     else do
-      let parsed = parse term "(REPL)" line
+      let parsed = parse (only term) "(REPL)" line
       case parsed of
-        Left e -> print e >> repl
+        Left e -> putStrLn (parseErrorPretty e) >> repl
         Right ut -> do
           putStr "=parse=> "
           print ut
