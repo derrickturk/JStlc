@@ -23,7 +23,6 @@ import qualified Data.List.NonEmpty as NE
 
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
-import Language.JStlc.Syntax
 
 type Parser = Parsec Void T.Text
 
@@ -126,28 +125,28 @@ nonLRTerm =
   <|> lexeme (enclosed "(" ")" term)
   <|> try lit
 
-binOp :: BinOp a b -> T.Text -> Parser (BinOp a b)
+binOp :: UBinOp -> T.Text -> Parser UBinOp
 binOp op l = op <$ lexeme (string l)
 
 -- for operators which are a prefix of other operators
-binOpAmbPrefix :: BinOp a b -> T.Text -> Parser (BinOp a b)
+binOpAmbPrefix :: UBinOp -> T.Text -> Parser UBinOp
 binOpAmbPrefix op l =
   op <$ (lexeme $ try $ string l <* notFollowedBy punctuationChar)
 
 opTable :: [[Operator Parser (UTerm n)]]
-opTable = [ [ InfixL (UBinOpApp <$> binOp Mul "*")
-            , InfixL (UBinOpApp <$> binOp Div "/")
+opTable = [ [ InfixL (UBinOpApp <$> binOp UMul "*")
+            , InfixL (UBinOpApp <$> binOp UDiv "/")
             ]
-          , [ InfixL (UBinOpApp <$> binOpAmbPrefix Add "+")
-            , InfixL (UBinOpApp <$> binOp Sub "-")
+          , [ InfixL (UBinOpApp <$> binOpAmbPrefix UAdd "+")
+            , InfixL (UBinOpApp <$> binOp USub "-")
             ]
           , [ InfixR (UCons <$ lexeme "::")
-            -- , InfixL (UBinOpApp <$> binOp Append "++")
-            , InfixL (UBinOpApp <$> binOpAmbPrefix StrCat "&")
+            , InfixL (UBinOpApp <$> binOp UAppend "++")
+            , InfixL (UBinOpApp <$> binOpAmbPrefix UStrCat "&")
             ]
           -- , [ InfixN (UBinOpApp <$> binOp Eq "==") ]
-          , [ InfixL (UBinOpApp <$> binOp And "&&") ]
-          , [ InfixL (UBinOpApp <$> binOp Or "||") ]
+          , [ InfixL (UBinOpApp <$> binOp UAnd "&&") ]
+          , [ InfixL (UBinOpApp <$> binOp UOr "||") ]
           , [ InfixR (UApp <$ lexeme "$") ]
           ]
 

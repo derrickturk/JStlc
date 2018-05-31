@@ -23,6 +23,7 @@ data TypeError :: * where
   ExpectedFnType :: Ty -> TypeError
   ExpectedOptionType :: Ty -> TypeError
   ExpectedListType :: Ty -> TypeError
+  ExpectedEqType :: Ty -> TypeError
 
 -- this MUST be a newtype, because -XImpredicativeTypes blows up on
 --   the type alias version
@@ -90,16 +91,17 @@ check' n c (UCons x xs) = do
         _ -> Left $ ExpectedListType (unSTy s2)
 
 check' n c (UBinOpApp op x y) = do
-  let aTy = argTy op
   exX <- check' n c x
   exY <- check' n c y
-  runExTerm exX $
-    \s1 t1 -> case testEquality s1 aTy of
-      Just Refl -> runExTerm exY $
-        \s2 t2 -> case testEquality s2 aTy of
-          Just Refl -> Right $ ExTerm (\k -> k (resTy op) (BinOpApp op t1 t2))
-          _ -> Left $ Mismatch (unSTy aTy) (unSTy s2)
-      _ -> Left $ Mismatch (unSTy aTy) (unSTy s1)
+  exOp <- checkBinOp op exX exY
+  runExBinOp exOp $
+    \aTy resTy op' -> runExTerm exX $
+      \s1 t1 -> case testEquality s1 aTy of
+        Just Refl -> runExTerm exY $
+          \s2 t2 -> case testEquality s2 aTy of
+            Just Refl -> Right $ ExTerm (\k -> k resTy (BinOpApp op' t1 t2))
+            _ -> Left $ Mismatch (unSTy aTy) (unSTy s2)
+        _ -> Left $ Mismatch (unSTy aTy) (unSTy s1)
 
 check' n c (UIfThenElse b t f) = do
   exB <- check' n c b
@@ -166,11 +168,50 @@ varIx (x :> xs) (ty ::: tys) name = if name == x
     exIx <- varIx xs tys name
     runExIx exIx $ \s i -> Just $ ExIx (\k -> k s (IS i)) 
 
-argTy :: ISTy a => BinOp a b -> STy a
-argTy _ = sTy
+newtype ExBinOp =
+  ExBinOp { runExBinOp :: forall r .
+                          (forall a b . STy a -> STy b -> BinOp a b -> r)
+                       -> r
+          }
 
-resTy :: ISTy b => BinOp a b -> STy b
-resTy _ = sTy
+newtype ExEqValTy =
+  ExEqValTy { runExEqValTy :: forall r .
+                              (forall a . Eq (ValTy a) => STy a -> r)
+                           -> r
+            }
+
+-- TODO: figure out how to generalize this to other "polymorphic" constraints
+testEqValTy :: STy a -> Maybe ExEqValTy
+testEqValTy SIntTy = Just $ ExEqValTy ($ SIntTy)
+testEqValTy SBoolTy = Just $ ExEqValTy ($ SBoolTy)
+testEqValTy SStringTy = Just $ ExEqValTy ($ SStringTy)
+testEqValTy (SFnTy _ _) = Nothing
+testEqValTy (SOptionTy a) = do
+  exEqA <- testEqValTy a
+  runExEqValTy exEqA $ \s -> Just $ ExEqValTy (\k -> k (SOptionTy s))
+testEqValTy (SListTy a) = do
+  exEqA <- testEqValTy a
+  runExEqValTy exEqA $ \s -> Just $ ExEqValTy (\k -> k (SListTy s))
+
+-- TODO: this is a weird way to split this functionality out
+-- this function only checks "polymorphism conditions" on the operators
+-- leaving the main check' function to handle operand checking
+checkBinOp :: UBinOp -> ExTerm as -> ExTerm as -> Either TypeError ExBinOp
+checkBinOp UAdd _ _ = Right $ ExBinOp (\k -> k SIntTy SIntTy Add)
+checkBinOp USub _ _ = Right $ ExBinOp (\k -> k SIntTy SIntTy Sub)
+checkBinOp UMul _ _ = Right $ ExBinOp (\k -> k SIntTy SIntTy Mul)
+checkBinOp UDiv _ _ = Right $ ExBinOp (\k -> k SIntTy SIntTy Div)
+checkBinOp UOr _ _ = Right $ ExBinOp (\k -> k SBoolTy SBoolTy Or)
+checkBinOp UAnd _ _ = Right $ ExBinOp (\k -> k SBoolTy SBoolTy And)
+checkBinOp UStrCat _ _ = Right $ ExBinOp (\k -> k SStringTy SStringTy StrCat)
+checkBinOp UAppend exX _ = runExTerm exX $ \sX _ -> case sX of
+  SListTy a -> Right $ ExBinOp (\k -> k (SListTy a) (SListTy a) Append)
+  _ -> Left $ ExpectedListType (unSTy sX)
+checkBinOp UEq exX _ = runExTerm exX $
+  \sX _ -> case testEqValTy sX of
+    Just exEqX -> runExEqValTy exEqX $
+      \s -> Right $ ExBinOp (\k -> k s SBoolTy Eq)
+    Nothing -> Left $ ExpectedEqType (unSTy sX)
 
 instance Show TypeError where
   show (Mismatch e f) = "Mismatch (" ++ show e ++ ") (" ++ show f ++ ")"
@@ -178,6 +219,7 @@ instance Show TypeError where
   show (ExpectedFnType ty) = "ExpectedFnType (" ++ show ty ++ ")"
   show (ExpectedOptionType ty) = "ExpectedOptionType (" ++ show ty ++ ")"
   show (ExpectedListType ty) = "ExpectedListType (" ++ show ty ++ ")"
+  show (ExpectedEqType ty) = "ExpectedEqType (" ++ show ty ++ ")"
 
 instance Show (ExTerm ctxt) where
   show exT = runExTerm exT $ \_ t -> show t

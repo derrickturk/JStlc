@@ -1,17 +1,27 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
-{-# LANGUAGE TypeOperators, FlexibleContexts #-}
+{-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
 
 module Language.JStlc.Unchecked (
-    UTerm(..)
-  , BinOp
+    UBinOp(..)
+  , UTerm(..)
 ) where
 
 import qualified Data.Text as T
 
 import Data.Nat
 import Language.JStlc.Types
-import Language.JStlc.Syntax (BinOp)
 import Language.JStlc.JS
+
+data UBinOp :: * where
+  UAdd :: UBinOp
+  USub :: UBinOp
+  UMul :: UBinOp
+  UDiv :: UBinOp
+  UOr :: UBinOp
+  UAnd :: UBinOp
+  UStrCat :: UBinOp
+  UAppend :: UBinOp
+  UEq :: UBinOp
 
 -- unchecked terms in a context of given depth
 data UTerm :: Nat -> * where
@@ -23,10 +33,21 @@ data UTerm :: Nat -> * where
   USome :: UTerm n -> UTerm n
   UNil :: STy a -> UTerm n
   UCons :: UTerm n -> UTerm n -> UTerm n
-  UBinOpApp :: (ISTy a, ISTy b) => BinOp a b -> UTerm n -> UTerm n -> UTerm n
+  UBinOpApp :: UBinOp -> UTerm n -> UTerm n -> UTerm n
   UIfThenElse :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UFoldL :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UMap :: UTerm n -> UTerm n -> UTerm n
+
+instance Show UBinOp where
+  show UAdd = "UAdd"
+  show USub = "USub"
+  show UMul = "UMul"
+  show UDiv = "UDiv"
+  show UOr = "UOr"
+  show UAnd = "UAnd"
+  show UStrCat = "UStrCat"
+  show UAppend = "UAppend"
+  show UEq = "UEq"
 
 instance Show (UTerm n) where
   show (UVar x) = "UVar " ++ show x
