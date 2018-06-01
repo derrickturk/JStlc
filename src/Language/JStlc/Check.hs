@@ -68,6 +68,14 @@ check' n c (UApp f x) = do
           _ -> Left $ Mismatch (unSTy sA) (unSTy sX)
       _ -> Left $ ExpectedFnType (unSTy sF)
 
+check' n c (ULet x t u) = do
+  exT <- check' n c t
+  runExTerm exT $
+    \sT tT -> do
+      exU <- check' (x :> n) (sT ::: c) u
+      runExTerm exU $
+        \sU tU -> Right $ ExTerm (\k -> k sU (Let x tT tU))
+
 check' _ _ (UNone ty@(SOptionTy _)) = Right $ ExTerm (\k -> k ty (None ty))
 check' _ _ (UNone ty) = Left $ ExpectedOptionType (unSTy ty)
 

@@ -29,6 +29,7 @@ data UTerm :: Nat -> * where
   ULit :: (ISTy a, ToJS (ValTy a), Show (ValTy a)) => ValTy a -> UTerm n
   ULam :: T.Text -> STy a -> UTerm ('S n) -> UTerm n
   UApp :: UTerm n -> UTerm n -> UTerm n
+  ULet :: T.Text -> UTerm n -> UTerm ('S n) -> UTerm n
   UNone :: STy a -> UTerm n
   USome :: UTerm n -> UTerm n
   UNil :: STy a -> UTerm n
@@ -55,6 +56,8 @@ instance Show (UTerm n) where
   show (ULam x ty body) =
     "ULam " ++ show x ++ " " ++ show ty ++ " (" ++ show body ++ ")"
   show (UApp x y) = "UApp (" ++ show x ++ ") (" ++ show y ++ ")"
+  show (ULet x t u) =
+    "ULet " ++ show x ++ " (" ++ show t ++ ") (" ++ show u ++ ")"
   show (UNone ty) = "UNone " ++ show ty
   show (USome x) = "USome (" ++ show x ++ ")"
   show (UNil ty) = "UNil " ++ show ty

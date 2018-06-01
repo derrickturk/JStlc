@@ -60,6 +60,7 @@ keywords = [ "if"
            , "none"
            , "nil"
            , "fix"
+           , "rec"
            , "map"
            , "foldl"
            ]
@@ -122,6 +123,9 @@ nonLRTerm =
   <|> try (UIfThenElse <$> (lexeme "if" *> space *> term)
                        <*> (lexeme "then" *> space *> term)
                        <*> (lexeme "else" *> space *> term))
+  <|> try (ULet <$> (lexeme "let" *> space *> ident)
+                <*> (lexeme "=" *> term)
+                <*> (lexeme "in" *> space *> term))
   <|> try (UFoldL <$> (lexeme "foldl" *> space *> nonLRTerm)
                   <*> nonLRTerm
                   <*> term)

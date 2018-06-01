@@ -29,6 +29,7 @@ eval' c (Var i) = lookup i c
 eval' _ (Lit v) = v
 eval' c (Lam _ _ body) = \x -> eval' (x :> c) body
 eval' c (App f x) = eval' c f $ eval' c x
+eval' c (Let _ t u) = let x = eval' c t in eval' (x :> c) u
 eval' _ (None _) = Nothing
 eval' c (Some x) = Just $ eval' c x
 eval' _ (Nil _) = []
