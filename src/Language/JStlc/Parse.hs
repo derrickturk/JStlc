@@ -39,6 +39,9 @@ lexeme = L.lexeme space
 symbol :: T.Text -> Parser T.Text
 symbol = L.symbol space
 
+comma :: Parser T.Text
+comma = symbol ","
+
 enclosed :: T.Text -> T.Text -> Parser a -> Parser a
 enclosed left right = between (symbol left) (symbol right)
 
@@ -102,10 +105,21 @@ annotated p = do
   t <- ty
   return (x, t)
 
+-- TODO: existential encoding to support nested list literals
+-- TLDR: we need an existential literal, where typechecking can
+--   validate that the contained elements are type-consistent
+
+litList :: Parser (UTerm n)
+litList =  enclosed "[" "]" $
+      try (ULit <$> sepBy1 integer comma)
+  <|> try (ULit <$> sepBy1 qString comma)
+  <|> (ULit <$> sepBy1 bool comma)
+
 lit :: Parser (UTerm n)
 lit =  try (ULit <$> qString)
    <|> try (ULit <$> integer)
-   <|> (ULit <$> bool)
+   <|> try (ULit <$> bool)
+   <|> litList
    -- TODO literal lists
 
 lambda :: Parser (UTerm n)
