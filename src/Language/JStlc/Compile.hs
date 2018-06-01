@@ -7,6 +7,10 @@ module Language.JStlc.Compile (
   , NameCtxt(..)
   , compile
   , compile'
+  , compileStmt
+  , compileStmt'
+  , compileProg
+  , compileProg'
 ) where
 
 import Prelude hiding (lookup)
@@ -64,3 +68,18 @@ compile' c (FoldL f x xs) =
 compile' c (MapOption f x) = let x' = compile' c x in
   JSCondExpr (JSBinOpApp "!==" x' (JSVar "null")) (JSCall (compile' c f) [x']) x'
 compile' c (MapList f x) = JSMethod (compile' c x) "map" [(compile' c f)]
+
+compileStmt :: NameCtxt before -> Stmt before after -> JSStmt
+compileStmt c s = fst $ compileStmt' c s
+
+compileStmt' :: NameCtxt before -> Stmt before after -> (JSStmt, NameCtxt after)
+compileStmt' c (Define x t) = (JSLet x (compile' c t), x :> c)
+
+compileProg :: Prog as -> JSProg
+compileProg =  fst . compileProg'
+
+compileProg' :: Prog as -> (JSProg, NameCtxt as)
+compileProg' EmptyProg = ([], CNil)
+compileProg' (p :&: s) = let (jsP, c) = compileProg' p
+                             (jsS, c') = compileStmt' c s in
+                             (jsP ++ [jsS], c')
