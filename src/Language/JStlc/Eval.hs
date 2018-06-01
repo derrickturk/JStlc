@@ -4,6 +4,9 @@
 module Language.JStlc.Eval (
     Ctxt(..)
   , eval
+  , eval'
+  , evalStmt
+  , evalProg
 ) where
 
 import Prelude hiding (lookup)
@@ -50,3 +53,10 @@ evalBinOp And x y = x && y
 evalBinOp StrCat x y = x <> y
 evalBinOp Append x y = x <> y
 evalBinOp Eq x y = x == y
+
+evalStmt :: Ctxt as -> Stmt as bs -> Ctxt bs
+evalStmt c (Define _ t) = eval' c t :> c
+
+evalProg :: Prog as -> Ctxt as
+evalProg EmptyProg = CNil
+evalProg (p :&: s) = evalStmt (evalProg p) s

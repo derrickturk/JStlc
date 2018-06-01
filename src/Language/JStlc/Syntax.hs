@@ -5,6 +5,8 @@ module Language.JStlc.Syntax (
     Ix(..)
   , BinOp(..)
   , Term(..)
+  , Stmt(..)
+  , Prog(..)
 ) where
 
 import qualified Data.Text as T
@@ -53,6 +55,16 @@ data Term :: [Ty] -> Ty -> * where
           -> Term ts ('ListTy a)
           -> Term ts ('ListTy b)
 
+-- statements are indexed by their "before" and "after" type contexts
+data Stmt :: [Ty] -> [Ty] -> * where
+  Define :: T.Text -> Term as a -> Stmt as (a ': as)
+
+-- TODO: :&: could require a proof of name uniqueness
+data Prog :: [Ty] -> * where
+  EmptyProg :: Prog '[]
+  (:&:) :: Prog before -> Stmt before after -> Prog after
+infixr 5 :&:
+
 instance Show (Ix as a) where
   show = show . toInt where
     toInt :: Ix as a -> Int
@@ -77,7 +89,7 @@ instance Show (Term as a) where
     "Lam " ++ show x ++ " " ++ show ty ++ " (" ++ show body ++ ")"
   show (App x y) = "App (" ++ show x ++ ") (" ++ show y ++ ")"
   show (Let x t u) =
-    "Let " ++ show x ++ ") (" ++ show t ++ ") (" ++ show u ++ ")"
+    "Let " ++ show x ++ " (" ++ show t ++ ") (" ++ show u ++ ")"
   show (None ty) = "None " ++ show ty
   show (Some x) = "Some (" ++ show x ++ ")"
   show (Nil ty) = "Nil " ++ show ty
@@ -90,3 +102,10 @@ instance Show (Term as a) where
     "FoldL (" ++ show f ++ ") (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (MapOption f x) = "MapOption (" ++ show f ++ ") (" ++ show x ++ ")"
   show (MapList f x) = "MapList (" ++ show f ++ ") (" ++ show x ++ ")"
+
+instance Show (Stmt before after) where
+  show (Define x t) = "Define " ++ show x ++ " (" ++ show t ++ ")"
+
+instance Show (Prog as) where
+  show EmptyProg = "EmptyProg"
+  show (p :&: s) = show p ++ " :&: " ++ show s
