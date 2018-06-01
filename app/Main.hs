@@ -26,8 +26,7 @@ banner =
   putStrLn "      / // __/_/ /_ / /" >>
   putStrLn "  __ / //_  //_  _// /___  v0.1" >>
   putStrLn " / // /__/ /  / / / // _/  by dwt @ terminus data science, LLC" >>
-  putStrLn "/___ //___/  /_/ /_//__/   (c) 2018" >>
-  putStrLn ""
+  putStrLn "/___ //___/  /_/ /_//__/   (c) 2018"
 
 -- TODO: catch IO errors
 compileFile :: FilePath -> IO ()
@@ -39,6 +38,7 @@ compileFile path = do
 
 repl :: IO ()
 repl = do
+  putStrLn ""
   line <- TIO.getLine
   if line == "quit"
     then return ()

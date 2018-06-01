@@ -40,6 +40,19 @@ jsOpName StrCat = "+"
 jsOpName Append = error "ICE"
 jsOpName Eq = "==="
 
+-- TODO: consider alternatives
+jsFix :: JS
+jsFix = JSLambda "f"
+  (JSCall
+    (JSLambda "x" (JSCall
+                    (JSVar "f")
+                    [(JSLambda "y" (JSCall (JSCall (JSVar "x") [(JSVar "x")])
+                                          [(JSVar "y")]))]))
+    [(JSLambda "x" (JSCall
+                    (JSVar "f")
+                    [(JSLambda "y" (JSCall (JSCall (JSVar "x") [(JSVar "x")])
+                                          [(JSVar "y")]))]))])
+
 compile :: Term '[] a -> JS
 compile = compile' CNil
 
@@ -52,7 +65,7 @@ compile' c (Let x t u) =
   JSCall (JSLambda x (compile' (x :> c) u)) [compile' c t]
 compile' c (LetRec x ty t u) = -- TODO: optimize this
   compile' c (Let x (Fix (Lam x ty t)) u)
-compile' c (Fix t) = JSVar "TODO" -- TODO: y combinator
+compile' c (Fix t) = JSCall jsFix [compile' c t]
 compile' _ (None _) = JSVar "null"
 compile' c (Some t) = compile' c t
 compile' _ (Nil _) = JSArray []
