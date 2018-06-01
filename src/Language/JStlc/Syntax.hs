@@ -38,6 +38,7 @@ data Term :: [Ty] -> Ty -> * where
   Lam :: T.Text -> STy a -> Term (a ': ts) b -> Term ts ('FnTy a b)
   App :: Term ts ('FnTy a b) -> Term ts a -> Term ts b
   Let :: T.Text -> Term ts a -> Term (a ': ts) b -> Term ts b
+  Fix :: Term ts ('FnTy a a) -> Term ts a
   None :: STy ('OptionTy a) -> Term ts ('OptionTy a)
   Some :: Term ts a -> Term ts ('OptionTy a)
   Nil :: STy ('ListTy a) -> Term ts ('ListTy a)
@@ -90,6 +91,7 @@ instance Show (Term as a) where
   show (App x y) = "App (" ++ show x ++ ") (" ++ show y ++ ")"
   show (Let x t u) =
     "Let " ++ show x ++ " (" ++ show t ++ ") (" ++ show u ++ ")"
+  show (Fix t) = "Fix (" ++ show t ++ ")"
   show (None ty) = "None " ++ show ty
   show (Some x) = "Some (" ++ show x ++ ")"
   show (Nil ty) = "Nil " ++ show ty

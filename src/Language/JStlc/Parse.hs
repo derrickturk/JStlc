@@ -117,6 +117,7 @@ nonLRTerm =
   <|> try lambda
   <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNone s)
         <$> annotated "none")
+  <|> try (UFix <$> (lexeme "fix" *> space *> term))
   <|> try (USome <$> (lexeme "some" *> space *> term))
   <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNil s)
         <$> annotated "nil")

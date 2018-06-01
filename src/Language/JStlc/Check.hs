@@ -76,6 +76,15 @@ check' n c (ULet x t u) = do
       runExTerm exU $
         \sU tU -> Right $ ExTerm (\k -> k sU (Let x tT tU))
 
+check' n c (UFix x) = do
+  exX <- check' n c x
+  runExTerm exX $
+    \s t -> case s of
+      SFnTy sA sB -> case testEquality sA sB of
+        Just Refl -> Right (ExTerm (\k -> k sA (Fix t)))
+        _ -> Left $ Mismatch (FnTy (unSTy sA) (unSTy sA)) (unSTy s)
+      _ -> Left $ ExpectedFnType (unSTy s)
+
 check' _ _ (UNone ty@(SOptionTy _)) = Right $ ExTerm (\k -> k ty (None ty))
 check' _ _ (UNone ty) = Left $ ExpectedOptionType (unSTy ty)
 
