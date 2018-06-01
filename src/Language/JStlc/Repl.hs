@@ -134,6 +134,25 @@ replStep (InspectTerm src) = Repl $ do
       putStr "=emit=> "
       TIO.putStrLn $ emit js
 
+replStep (ExecStmt src) = Repl $ do
+  exRS <- get
+  runExReplState exRS $ \n ts rs -> do
+    us <- runRepl $ replParseStmt src
+    (exSt, names') <- liftEither $ mapLeft ReplTypeError $
+      checkStmt' (names rs) ts us
+    runExStmt exSt $ \ts' st -> do
+      let vals' = evalStmt (vals rs) st
+          program' = program rs :&: st
+      put $ ExReplState $ \k ->
+        k (SS n) ts' (ReplState program' names' vals')
+
+{--
+  | ParseStmt T.Text
+  | InspectStmt T.Text
+  | CompileStmt T.Text
+  | CompileProg T.Text
+--}
+
 replStep ShowCtxts = Repl $ do
   exRS <- get
   runExReplState exRS $ \_ ts rs -> liftIO $ do
@@ -148,6 +167,10 @@ replStep Quit = Repl $ liftIO exitSuccess
 replParseTerm :: T.Text -> Repl (UTerm n)
 replParseTerm src = Repl $ liftEither $ mapLeft ReplParseError $
   parse (space *> only term) "(REPL)" src
+
+replParseStmt :: T.Text -> Repl (UStmt n ('S n))
+replParseStmt src = Repl $ liftEither $ mapLeft ReplParseError $
+  parse (space *> only stmt) "(REPL)" src
 
 showCtxt :: STyCtxt as -> Ctxt as -> String
 showCtxt STyNil CNil = "CNil"
