@@ -38,6 +38,7 @@ data Term :: [Ty] -> Ty -> * where
   Lam :: T.Text -> STy a -> Term (a ': ts) b -> Term ts ('FnTy a b)
   App :: Term ts ('FnTy a b) -> Term ts a -> Term ts b
   Let :: T.Text -> Term ts a -> Term (a ': ts) b -> Term ts b
+  LetRec :: T.Text -> STy a -> Term (a ': ts) a -> Term (a ': ts) b -> Term ts b
   Fix :: Term ts ('FnTy a a) -> Term ts a
   None :: STy ('OptionTy a) -> Term ts ('OptionTy a)
   Some :: Term ts a -> Term ts ('OptionTy a)
@@ -59,6 +60,7 @@ data Term :: [Ty] -> Ty -> * where
 -- statements are indexed by their "before" and "after" type contexts
 data Stmt :: [Ty] -> [Ty] -> * where
   Define :: T.Text -> Term as a -> Stmt as (a ': as)
+  DefineRec :: T.Text -> STy a -> Term (a ': as) a -> Stmt as (a ': as)
 
 -- TODO: :&: could require a proof of name uniqueness
 data Prog :: [Ty] -> * where
@@ -91,6 +93,9 @@ instance Show (Term as a) where
   show (App x y) = "App (" ++ show x ++ ") (" ++ show y ++ ")"
   show (Let x t u) =
     "Let " ++ show x ++ " (" ++ show t ++ ") (" ++ show u ++ ")"
+  show (LetRec x ty t u) =
+    "LetRec " ++ show x ++ " " ++ show ty ++
+    " (" ++ show t ++ ") (" ++ show u ++ ")"
   show (Fix t) = "Fix (" ++ show t ++ ")"
   show (None ty) = "None " ++ show ty
   show (Some x) = "Some (" ++ show x ++ ")"
@@ -107,6 +112,8 @@ instance Show (Term as a) where
 
 instance Show (Stmt before after) where
   show (Define x t) = "Define " ++ show x ++ " (" ++ show t ++ ")"
+  show (DefineRec x ty t) =
+    "DefineRec " ++ show x ++ " " ++ show ty ++ " (" ++ show t ++ ")"
 
 instance Show (Prog as) where
   show EmptyProg = "EmptyProg"

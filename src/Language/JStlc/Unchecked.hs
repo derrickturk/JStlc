@@ -45,6 +45,8 @@ data UTerm :: Nat -> * where
 
 data UStmt :: Nat -> Nat -> * where
   UDefine :: T.Text -> UTerm n -> UStmt n ('S n)
+  UDefineTyped :: T.Text -> STy a -> UTerm n -> UStmt n ('S n)
+  UDefineRec :: T.Text -> STy a -> UTerm ('S n) -> UStmt n ('S n)
 
 data UProg :: Nat -> * where
   UEmptyProg :: UProg 'Z
@@ -88,6 +90,10 @@ instance Show (UTerm n) where
 
 instance Show (UStmt n m) where
   show (UDefine x t) = "UDefine " ++ show x ++ " (" ++ show t ++ ")"
+  show (UDefineTyped x ty t) =
+    "UDefineTyped " ++ show x ++ " " ++ show ty ++ " (" ++ show t ++ ")"
+  show (UDefineRec x ty t) =
+    "UDefineRec " ++ show x ++ " " ++ show ty ++ " (" ++ show t ++ ")"
 
 instance Show (UProg n) where
   show UEmptyProg = "UEmptyProg"

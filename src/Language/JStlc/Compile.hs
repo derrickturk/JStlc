@@ -50,6 +50,8 @@ compile' c (Lam x _ body) = JSLambda x (compile' (x :> c) body)
 compile' c (App f x) = JSCall (compile' c f) [(compile' c x)]
 compile' c (Let x t u) =
   JSCall (JSLambda x (compile' (x :> c) u)) [compile' c t]
+compile' c (LetRec x ty t u) = -- TODO: optimize this
+  compile' c (Let x (Fix (Lam x ty t)) u)
 compile' c (Fix t) = JSVar "TODO" -- TODO: y combinator
 compile' _ (None _) = JSVar "null"
 compile' c (Some t) = compile' c t
@@ -75,6 +77,8 @@ compileStmt c s = fst $ compileStmt' c s
 
 compileStmt' :: NameCtxt before -> Stmt before after -> (JSStmt, NameCtxt after)
 compileStmt' c (Define x t) = (JSLet x (compile' c t), x :> c)
+compileStmt' c (DefineRec x ty t) = -- TODO: optimize this
+  (JSLet x (compile' c (Fix (Lam x ty t))), x :> c)
 
 compileProg :: Prog as -> JSProg
 compileProg =  fst . compileProg'

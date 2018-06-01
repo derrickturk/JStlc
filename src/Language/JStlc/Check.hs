@@ -76,7 +76,15 @@ check' n c (ULet x t u) = do
       runExTerm exU $
         \sU tU -> Right $ ExTerm (\k -> k sU (Let x tT tU))
 
-check' n c (ULetRec x ty t u) = check' n c (ULet x (UFix (ULam x ty t)) u)
+check' n c (ULetRec x ty t u) = do
+  exT <- check' (x :> n) (ty ::: c) t
+  runExTerm exT $
+    \sT tT -> case testEquality ty sT of
+        Just Refl -> do
+          exU <- check' (x :> n) (ty ::: c) u
+          runExTerm exU $
+            \sU tU -> Right $ ExTerm (\k -> k sU (LetRec x ty tT tU))
+        _ -> Left $ Mismatch (unSTy ty) (unSTy sT)
 
 check' n c (UFix x) = do
   exX <- check' n c x

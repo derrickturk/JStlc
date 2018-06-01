@@ -33,6 +33,7 @@ eval' _ (Lit v) = v
 eval' c (Lam _ _ body) = \x -> eval' (x :> c) body
 eval' c (App f x) = eval' c f $ eval' c x
 eval' c (Let _ t u) = let x = eval' c t in eval' (x :> c) u
+eval' c (LetRec x ty t u) = eval' c (Let x (Fix (Lam x ty t)) u)
 eval' c (Fix t) = eval' c t $ eval' c (Fix t)
 eval' _ (None _) = Nothing
 eval' c (Some x) = Just $ eval' c x
@@ -57,6 +58,7 @@ evalBinOp Eq x y = x == y
 
 evalStmt :: Ctxt as -> Stmt as bs -> Ctxt bs
 evalStmt c (Define _ t) = eval' c t :> c
+evalStmt c (DefineRec x ty t) = eval' c (Fix (Lam x ty t)) :> c
 
 evalProg :: Prog as -> Ctxt as
 evalProg EmptyProg = CNil
