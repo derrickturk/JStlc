@@ -2,6 +2,8 @@
 
 module Main where
 
+import System.Environment
+import System.FilePath
 import qualified Data.Text.IO as TIO
 
 import Language.JStlc.Types
@@ -12,7 +14,11 @@ import Language.JStlc.Compile
 import Language.JStlc.JS
 
 main :: IO ()
-main = banner >> repl
+main = do
+  args <- getArgs
+  case args of
+    [] -> banner >> repl
+    _ -> mapM_ compileFile args
 
 banner :: IO ()
 banner =
@@ -22,6 +28,14 @@ banner =
   putStrLn " / // /__/ /  / / / // _/  by dwt @ terminus data science, LLC" >>
   putStrLn "/___ //___/  /_/ /_//__/   (c) 2018" >>
   putStrLn ""
+
+-- TODO: catch IO errors
+compileFile :: FilePath -> IO ()
+compileFile path = do
+  let outPath = dropExtension path <.> "js"
+  src <- TIO.readFile path
+  -- TODO: stuff (need prog/stmt parsers)
+  TIO.writeFile outPath src
 
 repl :: IO ()
 repl = do
