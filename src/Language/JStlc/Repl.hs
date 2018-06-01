@@ -30,6 +30,7 @@ import Language.JStlc.Parse
 import Language.JStlc.Check as Ck
 import Language.JStlc.Eval as E
 import Language.JStlc.Compile as C
+import Language.JStlc.JS
 
 data ReplState n as = ReplState { program :: Prog as
                                 , names :: UNameCtxt n
@@ -56,8 +57,8 @@ data ReplCommand =
     EvalTerm T.Text
   | TypeTerm T.Text
   | ParseTerm T.Text
-  | InspectTerm T.Text
   | CompileTerm T.Text
+  | InspectTerm T.Text
   | ExecStmt T.Text
   | ParseStmt T.Text
   | InspectStmt T.Text
@@ -74,16 +75,11 @@ data ReplError =
   | InvalidReplCommand T.Text
   deriving Show
 
-initReplState :: ReplState 'Z '[]
-initReplState = ReplState EmptyProg UNameNil CNil
+initReplState :: ExReplState
+initReplState = ExReplState $ \k ->
+  k SZ STyNil (ReplState EmptyProg UNameNil CNil)
 
 replStep :: ReplCommand -> Repl ()
-replStep (EvalTerm src) = Repl $ do
-  ut <- liftEither $ mapLeft ReplParseError $
-    parse (space *> only term) "(REPL)" src
-  exT <- liftEither $ mapLeft ReplTypeError $ check ut
-  runExTerm exT $ \s t -> liftIO $ putStrLn $ showVal s (eval t)
-
 replStep (EvalTerm src) = Repl $ do
   exRS <- get
   runExReplState exRS $ \_ ts rs -> do
@@ -92,6 +88,51 @@ replStep (EvalTerm src) = Repl $ do
       check' (names rs) ts ut
     runExTerm exT $ \s t ->
       liftIO $ putStrLn $ showVal s (eval' (vals rs) t)
+
+replStep (TypeTerm src) = Repl $ do
+  exRS <- get
+  runExReplState exRS $ \_ ts rs -> do
+    ut <- runRepl $ replParseTerm src
+    exT <- liftEither $ mapLeft ReplTypeError $
+      check' (names rs) ts ut
+    runExTerm exT $ \s t -> liftIO $ do
+      putStr (show t)
+      putStr " : "
+      print (unSTy s)
+
+replStep (ParseTerm src) = Repl $ do
+  ut <- runRepl $ replParseTerm src
+  liftIO $ print ut
+
+replStep (CompileTerm src) = Repl $ do
+  exRS <- get
+  runExReplState exRS $ \_ ts rs -> do
+    ut <- runRepl $ replParseTerm src
+    exT <- liftEither $ mapLeft ReplTypeError $
+      check' (names rs) ts ut
+    let (_, cNames) = compileProg' (program rs)
+    runExTerm exT $ \_ t ->
+      liftIO $ TIO.putStrLn $ emit $ compile' cNames t
+
+replStep (InspectTerm src) = Repl $ do
+  exRS <- get
+  runExReplState exRS $ \_ ts rs -> do
+    ut <- runRepl $ replParseTerm src
+    liftIO $ putStr "=parse=> "
+    liftIO $ print ut
+    exT <- liftEither $ mapLeft ReplTypeError $
+      check' (names rs) ts ut
+    let (_, cNames) = compileProg' (program rs)
+    runExTerm exT $ \s t -> liftIO $ do
+      putStr "=check=> "
+      putStrLn $ show t ++ " : " ++ show (unSTy s)
+      putStr "=eval=> "
+      putStrLn $ showVal s (eval' (vals rs) t)
+      let js = compile' cNames t
+      putStr "=compile=> "
+      print js
+      putStr "=emit=> "
+      TIO.putStrLn $ emit js
 
 replStep ShowCtxts = Repl $ do
   exRS <- get
