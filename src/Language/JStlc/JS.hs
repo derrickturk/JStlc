@@ -80,3 +80,6 @@ instance Emit JSStmt where
   emit (JSFunDef f args body) =
     "function " <> f <> "(" <> T.intercalate ", " args <> ") {\n\treturn "
     <> emit body <> ";\n}\n"
+
+instance Emit a => Emit [a] where
+  emit = foldMap emit

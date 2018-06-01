@@ -4,10 +4,12 @@ module Main where
 
 import System.Environment
 import System.FilePath
+import System.IO
 import qualified Data.Text.IO as TIO
 
 import Language.JStlc.Types
 import Language.JStlc.Parse
+import Language.JStlc.Unchecked
 import Language.JStlc.Check
 import Language.JStlc.Eval
 import Language.JStlc.Compile
@@ -34,7 +36,16 @@ compileFile path = do
   let outPath = dropExtension path <.> "js"
   src <- TIO.readFile path
   -- TODO: stuff (need prog/stmt parsers)
-  TIO.writeFile outPath src
+  let parsed = parse (space *> only prog) path src
+  case parsed of
+    Left e -> hPutStrLn stderr (parseErrorPretty e)
+    Right exUProg -> runExUProg exUProg $
+      \_ up -> case checkProg up of
+        Left e -> do
+          hPutStr stderr $ path ++ ": "
+          hPrint stderr e
+        Right exP -> runExProg exP $
+          \_ p -> TIO.writeFile outPath $ emit $ compileProg p
 
 repl :: IO ()
 repl = do
@@ -43,7 +54,7 @@ repl = do
   if line == "quit"
     then return ()
     else do
-      let parsed = parse (only term) "(REPL)" line
+      let parsed = parse (space *> only term) "(REPL)" line
       case parsed of
         Left e -> putStrLn (parseErrorPretty e) >> repl
         Right ut -> do

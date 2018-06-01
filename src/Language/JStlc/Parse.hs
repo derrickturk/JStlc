@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Parse (
@@ -5,7 +6,10 @@ module Language.JStlc.Parse (
   , ident
   , ty
   , term
+  , stmt
+  , prog
   , only
+  , space
   , parse
   , parseTest
   , parseTest'
@@ -23,6 +27,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 
+import Data.Nat
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
 
@@ -181,5 +186,37 @@ appTerm =  try (binOpRec UApp nonLRTerm nonLRTerm)
 term :: Parser (UTerm n)
 term = makeExprParser appTerm opTable
 
+defineRec :: Parser (UStmt n ('S n))
+defineRec = do
+  "rec"
+  space1
+  (x, typ) <- annotated ident
+  lexeme "="
+  t <- term
+  lexeme ";"
+  return $ runExSTy (toExSTy typ) (\s -> UDefineRec x s t)
+
+defineTyped :: Parser (UStmt n ('S n))
+defineTyped = do
+  (x, typ) <- annotated ident
+  lexeme "="
+  t <- term
+  lexeme ";"
+  return $ runExSTy (toExSTy typ) (\s -> UDefineTyped x s t)
+
+stmt :: Parser (UStmt n ('S n))
+stmt =  try defineRec
+    <|> try defineTyped
+    <|> (UDefine <$> ident <*> (lexeme "=" *> term <* lexeme ";"))
+
+prog :: Parser ExUProg
+prog = go SZ UEmptyProg where
+  go :: SNat n -> UProg n -> Parser ExUProg
+  go n p = do
+    s <- optional stmt
+    case s of
+      Just s' -> go (SS n) (p :&?: s')
+      Nothing -> return $ ExUProg (\k -> k n p)
+
 only :: Parser a -> Parser a
-only = (<* lexeme eof)
+only = (<* eof)

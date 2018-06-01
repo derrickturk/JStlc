@@ -6,6 +6,7 @@ module Language.JStlc.Unchecked (
   , UTerm(..)
   , UStmt(..)
   , UProg(..)
+  , ExUProg(..)
 ) where
 
 import qualified Data.Text as T
@@ -52,6 +53,9 @@ data UProg :: Nat -> * where
   UEmptyProg :: UProg 'Z
   (:&?:) :: UProg n -> UStmt n m -> UProg m
 infixr 5 :&?:
+
+newtype ExUProg =
+  ExUProg { runExUProg :: forall r . (forall n . SNat n -> UProg n -> r) -> r }
 
 instance Show UBinOp where
   show UAdd = "UAdd"
