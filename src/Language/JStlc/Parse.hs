@@ -113,15 +113,15 @@ lambda = do
 
 letRec :: Parser (UTerm n)
 letRec = do
-  lexeme "let"
-  space
+  "let"
+  space1
   "rec"
-  space
+  space1
   (x, typ) <- annotated ident
   lexeme "="
   t <- term
-  lexeme "in"
-  space
+  "in"
+  space1
   u <- term
   return $ runExSTy (toExSTy typ) (\s -> ULetRec x s t u)
 
@@ -130,22 +130,22 @@ nonLRTerm =
       try (UVar <$> ident)
   <|> try lambda
   <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNone s)
-        <$> annotated "none")
-  <|> try (UFix <$> (lexeme "fix" *> space *> term))
-  <|> try (USome <$> (lexeme "some" *> space *> term))
+        <$> annotated (lexeme "none"))
+  <|> try (UFix <$> ("fix" *> space1 *> term))
+  <|> try (USome <$> ("some" *> space1 *> term))
   <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNil s)
-        <$> annotated "nil")
-  <|> try (UIfThenElse <$> (lexeme "if" *> space *> term)
-                       <*> (lexeme "then" *> space *> term)
-                       <*> (lexeme "else" *> space *> term))
-  <|> try (ULet <$> (lexeme "let" *> space *> ident)
+        <$> annotated (lexeme "nil"))
+  <|> try (UIfThenElse <$> ("if" *> space1 *> term)
+                       <*> ("then" *> space1 *> term)
+                       <*> ("else" *> space1 *> term))
+  <|> try (ULet <$> ("let" *> space1 *> ident)
                 <*> (lexeme "=" *> term)
-                <*> (lexeme "in" *> space *> term))
+                <*> ("in" *> space1 *> term))
   <|> try letRec
-  <|> try (UFoldL <$> (lexeme "foldl" *> space *> nonLRTerm)
+  <|> try (UFoldL <$> ("foldl" *> space1 *> nonLRTerm)
                   <*> nonLRTerm
                   <*> term)
-  <|> try (UMap <$> (lexeme "map" *> space *> nonLRTerm) <*> term)
+  <|> try (UMap <$> ("map" *> space1 *> nonLRTerm) <*> term)
   <|> try lit -- must precede ()-enclosed term
   <|> lexeme (enclosed "(" ")" term)
 
