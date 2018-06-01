@@ -50,6 +50,7 @@ evalBinOp Add x y = x + y
 evalBinOp Sub x y = x - y
 evalBinOp Mul x y = x * y
 evalBinOp Div x y = x `div` y
+evalBinOp Mod x y = x `mod` y
 evalBinOp Or x y = x || y -- saved by laziness
 evalBinOp And x y = x && y
 evalBinOp StrCat x y = x <> y

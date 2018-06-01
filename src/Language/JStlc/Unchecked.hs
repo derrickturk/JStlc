@@ -20,6 +20,7 @@ data UBinOp :: * where
   USub :: UBinOp
   UMul :: UBinOp
   UDiv :: UBinOp
+  UMod :: UBinOp
   UOr :: UBinOp
   UAnd :: UBinOp
   UStrCat :: UBinOp
@@ -62,6 +63,7 @@ instance Show UBinOp where
   show USub = "USub"
   show UMul = "UMul"
   show UDiv = "UDiv"
+  show UMod = "UMod"
   show UOr = "UOr"
   show UAnd = "UAnd"
   show UStrCat = "UStrCat"

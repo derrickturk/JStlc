@@ -26,6 +26,7 @@ data BinOp :: Ty -> Ty -> * where
   Sub :: BinOp 'IntTy 'IntTy
   Mul :: BinOp 'IntTy 'IntTy
   Div :: BinOp 'IntTy 'IntTy
+  Mod :: BinOp 'IntTy 'IntTy
   Or :: BinOp 'BoolTy 'BoolTy
   And :: BinOp 'BoolTy 'BoolTy
   StrCat :: BinOp 'StringTy 'StringTy
@@ -79,6 +80,7 @@ instance Show (BinOp a b) where
   show Sub = "Sub"
   show Mul = "Mul"
   show Div = "Div"
+  show Mod = "Mod"
   show Or = "Or"
   show And = "And"
   show StrCat = "StrCat"

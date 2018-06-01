@@ -179,6 +179,7 @@ binOpAmbPrefix op l =
 opTable :: [[Operator Parser (UTerm n)]]
 opTable = [ [ InfixL (UBinOpApp <$> binOp UMul "*")
             , InfixL (UBinOpApp <$> binOp UDiv "/")
+            , InfixL (UBinOpApp <$> binOp UMod "%")
             ]
           , [ InfixL (UBinOpApp <$> binOpAmbPrefix UAdd "+")
             , InfixL (UBinOpApp <$> binOp USub "-")
