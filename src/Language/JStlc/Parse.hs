@@ -188,6 +188,11 @@ opTable = [ [ InfixL (UBinOpApp <$> binOp UMul "*")
             , InfixL (UBinOpApp <$> binOp UAppend "++")
             , InfixL (UBinOpApp <$> binOpAmbPrefix UStrCat "&")
             ]
+          , [ InfixL (UBinOpApp <$> binOp ULtEq "<=")
+            , InfixL (UBinOpApp <$> binOp UGtEq ">=")
+            , InfixL (UBinOpApp <$> binOpAmbPrefix ULt "<")
+            , InfixL (UBinOpApp <$> binOpAmbPrefix UGt ">")
+            ]
           , [ InfixN (UBinOpApp <$> binOp UEq "==") ]
           , [ InfixL (UBinOpApp <$> binOp UAnd "&&") ]
           , [ InfixL (UBinOpApp <$> binOp UOr "||") ]

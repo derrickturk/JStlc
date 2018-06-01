@@ -21,6 +21,8 @@ data Ix :: [Ty] -> Ty -> * where
   IZ :: Ix (a ': as) a
   IS :: Ix as a -> Ix (b ': as) a
 
+-- TODO: unary ops (not, negate)
+
 data BinOp :: Ty -> Ty -> * where
   Add :: BinOp 'IntTy 'IntTy
   Sub :: BinOp 'IntTy 'IntTy
@@ -29,6 +31,10 @@ data BinOp :: Ty -> Ty -> * where
   Mod :: BinOp 'IntTy 'IntTy
   Or :: BinOp 'BoolTy 'BoolTy
   And :: BinOp 'BoolTy 'BoolTy
+  Lt :: BinOp 'IntTy 'BoolTy
+  LtEq :: BinOp 'IntTy 'BoolTy
+  Gt :: BinOp 'IntTy 'BoolTy
+  GtEq :: BinOp 'IntTy 'BoolTy
   StrCat :: BinOp 'StringTy 'StringTy
   Append :: BinOp ('ListTy a) ('ListTy a)
   Eq :: Eq (ValTy a) => BinOp a 'BoolTy
@@ -83,6 +89,10 @@ instance Show (BinOp a b) where
   show Mod = "Mod"
   show Or = "Or"
   show And = "And"
+  show Lt = "Lt"
+  show LtEq = "LtEq"
+  show Gt = "Gt"
+  show GtEq = "GtEq"
   show StrCat = "StrCat"
   show Append = "Append"
   show Eq = "Eq"

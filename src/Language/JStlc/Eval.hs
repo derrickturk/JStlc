@@ -53,6 +53,10 @@ evalBinOp Div x y = x `div` y
 evalBinOp Mod x y = x `mod` y
 evalBinOp Or x y = x || y -- saved by laziness
 evalBinOp And x y = x && y
+evalBinOp Lt x y = x < y
+evalBinOp LtEq x y = x <= y
+evalBinOp Gt x y = x > y
+evalBinOp GtEq x y = x >= y
 evalBinOp StrCat x y = x <> y
 evalBinOp Append x y = x <> y
 evalBinOp Eq x y = x == y
