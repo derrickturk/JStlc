@@ -34,6 +34,7 @@ data TypeError :: * where
   ExpectedOptionType :: Ty -> TypeError
   ExpectedListType :: Ty -> TypeError
   ExpectedEqType :: Ty -> TypeError
+  DuplicateDef :: T.Text -> TypeError
 
 -- this MUST be a newtype, because -XImpredicativeTypes blows up on
 --   the type alias version
@@ -61,6 +62,10 @@ data UNameCtxt :: Nat -> * where
   CNil :: UNameCtxt 'Z
   (:>) :: T.Text -> UNameCtxt n -> UNameCtxt ('S n)
 infixr 5 :>
+
+defined :: T.Text -> UNameCtxt n -> Bool
+defined _ CNil = False
+defined x (n :> ns) = if x == n then True else defined x ns
 
 check :: UTerm 'Z -> Either TypeError (ExTerm '[])
 check = check' CNil STyNil
@@ -268,26 +273,35 @@ checkStmt :: UNameCtxt m
           -> Either TypeError (ExStmt before)
 checkStmt n c s = fst <$> checkStmt' n c s
 
+-- TODO: enforce uniqueness of names in types
+
 checkStmt' :: UNameCtxt m
            -> STyCtxt before
            -> UStmt m n
            -> Either TypeError (ExStmt before, UNameCtxt n)
-checkStmt' n c (UDefine x t) = do
-  exT <- check' n c t
-  runExTerm exT $
-    \s t' -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
+checkStmt' n c (UDefine x t) = if defined x n
+  then Left $ DuplicateDef x
+  else do
+    exT <- check' n c t
+    runExTerm exT $
+      \s t' -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
 
-checkStmt' n c (UDefineTyped x ty t) = do
-  exT <- check' n c t
-  runExTerm exT $ \s t' -> case testEquality s ty of
-    Just Refl -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
-    _ -> Left $ Mismatch (unSTy ty) (unSTy s)
+checkStmt' n c (UDefineTyped x ty t) = if defined x n
+  then Left $ DuplicateDef x
+  else do
+    exT <- check' n c t
+    runExTerm exT $ \s t' -> case testEquality s ty of
+      Just Refl -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
+      _ -> Left $ Mismatch (unSTy ty) (unSTy s)
 
-checkStmt' n c (UDefineRec x ty t) = do
-  exT <- check' (x :> n) (ty ::: c) t
-  runExTerm exT $ \s t' -> case testEquality s ty of
-    Just Refl -> Right (ExStmt (\k -> k (s ::: c) (DefineRec x ty t')), x :> n)
-    _ -> Left $ Mismatch (unSTy ty) (unSTy s)
+checkStmt' n c (UDefineRec x ty t) = if defined x n
+  then Left $ DuplicateDef x
+  else do
+    exT <- check' (x :> n) (ty ::: c) t
+    runExTerm exT $ \s t' -> case testEquality s ty of
+      Just Refl ->
+        Right (ExStmt (\k -> k (s ::: c) (DefineRec x ty t')), x :> n)
+      _ -> Left $ Mismatch (unSTy ty) (unSTy s)
 
 checkProg :: UProg n -> Either TypeError ExProg
 checkProg = fmap fst . checkProg'
@@ -307,6 +321,7 @@ instance Show TypeError where
   show (ExpectedOptionType ty) = "ExpectedOptionType (" ++ show ty ++ ")"
   show (ExpectedListType ty) = "ExpectedListType (" ++ show ty ++ ")"
   show (ExpectedEqType ty) = "ExpectedEqType (" ++ show ty ++ ")"
+  show (DuplicateDef x) = "DuplicateDef " ++ show x
 
 instance Show (ExTerm ctxt) where
   show exT = runExTerm exT $ \_ t -> show t
