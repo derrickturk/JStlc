@@ -111,6 +111,20 @@ lambda = do
   body <- term
   return $ runExSTy (toExSTy t) $ \s -> ULam x s body
 
+letRec :: Parser (UTerm n)
+letRec = do
+  lexeme "let"
+  space
+  "rec"
+  space
+  (x, typ) <- annotated ident
+  lexeme "="
+  t <- term
+  lexeme "in"
+  space
+  u <- term
+  return $ runExSTy (toExSTy typ) (\s -> ULetRec x s t u)
+
 nonLRTerm :: Parser (UTerm n)
 nonLRTerm = 
       try (UVar <$> ident)
@@ -127,6 +141,7 @@ nonLRTerm =
   <|> try (ULet <$> (lexeme "let" *> space *> ident)
                 <*> (lexeme "=" *> term)
                 <*> (lexeme "in" *> space *> term))
+  <|> try letRec
   <|> try (UFoldL <$> (lexeme "foldl" *> space *> nonLRTerm)
                   <*> nonLRTerm
                   <*> term)

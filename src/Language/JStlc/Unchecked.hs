@@ -32,6 +32,7 @@ data UTerm :: Nat -> * where
   ULam :: T.Text -> STy a -> UTerm ('S n) -> UTerm n
   UApp :: UTerm n -> UTerm n -> UTerm n
   ULet :: T.Text -> UTerm n -> UTerm ('S n) -> UTerm n
+  ULetRec :: T.Text -> STy a -> UTerm ('S n) -> UTerm ('S n) -> UTerm n
   UFix :: UTerm n -> UTerm n
   UNone :: STy a -> UTerm n
   USome :: UTerm n -> UTerm n
@@ -69,6 +70,9 @@ instance Show (UTerm n) where
   show (UApp x y) = "UApp (" ++ show x ++ ") (" ++ show y ++ ")"
   show (ULet x t u) =
     "ULet " ++ show x ++ " (" ++ show t ++ ") (" ++ show u ++ ")"
+  show (ULetRec x ty t u) =
+    "ULetRec " ++ show x ++ " " ++ show ty ++
+    " (" ++ show t ++ ") (" ++ show u ++ ")"
   show (UFix x) = "UFix (" ++ show x ++ ")"
   show (UNone ty) = "UNone " ++ show ty
   show (USome x) = "USome (" ++ show x ++ ")"

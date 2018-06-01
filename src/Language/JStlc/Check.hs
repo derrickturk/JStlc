@@ -76,6 +76,8 @@ check' n c (ULet x t u) = do
       runExTerm exU $
         \sU tU -> Right $ ExTerm (\k -> k sU (Let x tT tU))
 
+check' n c (ULetRec x ty t u) = check' n c (ULet x (UFix (ULam x ty t)) u)
+
 check' n c (UFix x) = do
   exX <- check' n c x
   runExTerm exX $
