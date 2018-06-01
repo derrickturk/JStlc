@@ -4,6 +4,8 @@
 module Language.JStlc.Unchecked (
     UBinOp(..)
   , UTerm(..)
+  , UStmt(..)
+  , UProg(..)
 ) where
 
 import qualified Data.Text as T
@@ -39,6 +41,14 @@ data UTerm :: Nat -> * where
   UFoldL :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UMap :: UTerm n -> UTerm n -> UTerm n
 
+data UStmt :: Nat -> Nat -> * where
+  UDefine :: T.Text -> UTerm n -> UStmt n ('S n)
+
+data UProg :: Nat -> * where
+  UEmptyProg :: UProg 'Z
+  (:&?:) :: UProg n -> UStmt n m -> UProg m
+infixr 5 :&?:
+
 instance Show UBinOp where
   show UAdd = "UAdd"
   show USub = "USub"
@@ -69,3 +79,10 @@ instance Show (UTerm n) where
   show (UFoldL f x xs) =
     "UFoldL (" ++ show f ++ ") (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (UMap f x) = "UMap (" ++ show f ++ ") (" ++ show x ++ ")"
+
+instance Show (UStmt n m) where
+  show (UDefine x t) = "UDefine " ++ show x ++ " (" ++ show t ++ ")"
+
+instance Show (UProg n) where
+  show UEmptyProg = "UEmptyProg"
+  show (p :&?: s) = show p ++ " :&?: " ++ show s
