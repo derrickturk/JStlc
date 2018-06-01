@@ -89,8 +89,12 @@ compileStmt :: NameCtxt before -> Stmt before after -> JSStmt
 compileStmt c s = fst $ compileStmt' c s
 
 compileStmt' :: NameCtxt before -> Stmt before after -> (JSStmt, NameCtxt after)
+compileStmt' c (Define f (Lam x _ body)) = 
+  (JSFunDef f [x] (compile' (x :> c) body), f :> c)
 compileStmt' c (Define x t) = (JSLet x (compile' c t), x :> c)
-compileStmt' c (DefineRec x ty t) = -- TODO: optimize this
+compileStmt' c (DefineRec f _ (Lam x _ body)) =
+  (JSFunDef f [x] (compile' (x :> f :> c) body), f :> c)
+compileStmt' c (DefineRec x ty t) =
   (JSLet x (compile' c (Fix (Lam x ty t))), x :> c)
 
 compileProg :: Prog as -> JSProg

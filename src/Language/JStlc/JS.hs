@@ -27,6 +27,7 @@ data JS =
 
 data JSStmt =
     JSLet T.Text JS
+  | JSFunDef T.Text [T.Text] JS
     deriving Show
 
 type JSProg = [JSStmt]
@@ -75,4 +76,7 @@ instance Emit JS where
   emit (JSBinOpApp op x y) = "(" <> emit x <> ") " <> op <> " (" <> emit y <> ")"
 
 instance Emit JSStmt where
-  emit (JSLet x t) = "var " <> x <> " = " <> emit t <> ";"
+  emit (JSLet x t) = "var " <> x <> " = " <> emit t <> ";\n"
+  emit (JSFunDef f args body) =
+    "function " <> f <> "(" <> T.intercalate ", " args <> ") {\n\treturn "
+    <> emit body <> ";\n}\n"
