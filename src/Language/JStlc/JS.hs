@@ -82,4 +82,4 @@ instance Emit JSStmt where
     <> emit body <> ";\n}\n"
 
 instance Emit a => Emit [a] where
-  emit = foldMap emit
+  emit = T.intercalate "\n" . fmap emit
