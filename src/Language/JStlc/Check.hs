@@ -10,6 +10,7 @@ module Language.JStlc.Check (
   , ExProg
   , runExProg
   , check
+  , check'
   , checkStmt
   , checkStmt'
   , checkProg
@@ -59,16 +60,16 @@ data STyCtxt :: [Ty] -> * where
 infixr 5 :::
 
 data UNameCtxt :: Nat -> * where
-  CNil :: UNameCtxt 'Z
+  UNameNil :: UNameCtxt 'Z
   (:>) :: T.Text -> UNameCtxt n -> UNameCtxt ('S n)
 infixr 5 :>
 
 defined :: T.Text -> UNameCtxt n -> Bool
-defined _ CNil = False
+defined _ UNameNil = False
 defined x (n :> ns) = if x == n then True else defined x ns
 
 check :: UTerm 'Z -> Either TypeError (ExTerm '[])
-check = check' CNil STyNil
+check = check' UNameNil STyNil
 
 check' :: UNameCtxt n -> STyCtxt as -> UTerm n -> Either TypeError (ExTerm as)
 
@@ -214,7 +215,7 @@ newtype ExIx ctxt =
   ExIx { runExIx :: forall r . (forall a . STy a -> Ix ctxt a -> r) -> r }
 
 varIx :: UNameCtxt n -> STyCtxt as -> T.Text -> Maybe (ExIx as)
-varIx CNil _ _ = Nothing 
+varIx UNameNil _ _ = Nothing 
 varIx _ STyNil _ = Nothing -- TODO: these cases unify with Vects
 varIx (x :> xs) (ty ::: tys) name = if name == x
   then Just $ ExIx (\k -> k ty IZ)
@@ -312,7 +313,7 @@ checkProg :: UProg n -> Either TypeError ExProg
 checkProg = fmap fst . checkProg'
 
 checkProg' :: UProg n -> Either TypeError (ExProg, UNameCtxt n)
-checkProg' UEmptyProg = Right (ExProg (\k -> k STyNil EmptyProg), CNil)
+checkProg' UEmptyProg = Right (ExProg (\k -> k STyNil EmptyProg), UNameNil)
 checkProg' (p :&?: s) = do
   (exP, n) <- checkProg' p
   runExProg exP $ \pC pP -> do
@@ -336,3 +337,11 @@ instance Show (ExStmt before) where
 
 instance Show ExProg where
   show exP = runExProg exP $ \_ p -> show p
+
+instance Show (STyCtxt as) where
+  show STyNil = "STyNil"
+  show (t ::: ts) = show t ++ " ::: " ++ show ts
+
+instance Show (UNameCtxt n) where
+  show UNameNil = "UNameNil"
+  show (n :> ns) = show n ++ " :> " ++ show ns

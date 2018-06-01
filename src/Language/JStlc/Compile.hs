@@ -21,7 +21,7 @@ import Language.JStlc.Syntax
 import Language.JStlc.JS
 
 data NameCtxt :: [Ty] -> * where
-  CNil :: NameCtxt '[]
+  NameNil :: NameCtxt '[]
   (:>) :: T.Text -> NameCtxt as -> NameCtxt (a ': as)
 infixr 5 :>
 
@@ -59,7 +59,7 @@ jsFix = JSLambda "f"
                                           [(JSVar "y")]))]))])
 
 compile :: Term '[] a -> JS
-compile = compile' CNil
+compile = compile' NameNil
 
 compile' :: NameCtxt as -> Term as a -> JS
 compile' c (Var i) = JSVar $ lookup i c
@@ -106,7 +106,7 @@ compileProg :: Prog as -> JSProg
 compileProg =  fst . compileProg'
 
 compileProg' :: Prog as -> (JSProg, NameCtxt as)
-compileProg' EmptyProg = ([], CNil)
+compileProg' EmptyProg = ([], NameNil)
 compileProg' (p :&: s) = let (jsP, c) = compileProg' p
                              (jsS, c') = compileStmt' c s in
                              (jsP ++ [jsS], c')

@@ -15,12 +15,13 @@ module Language.JStlc.Parse (
   , parseTest'
   , runParser
   , runParser'
+  , Language.JStlc.Parse.ParseError
   , parseErrorPretty
 ) where
 
 import Data.Void (Void)
 import qualified Data.Text as T
-import Text.Megaparsec
+import Text.Megaparsec as MP
 import Text.Megaparsec.Char
 import Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -32,6 +33,7 @@ import Language.JStlc.Types
 import Language.JStlc.Unchecked
 
 type Parser = Parsec Void T.Text
+type ParseError = MP.ParseError Char Void
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme space
