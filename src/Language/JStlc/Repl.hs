@@ -61,9 +61,9 @@ data ReplCommand =
   | InspectTerm T.Text
   | ExecStmt T.Text
   | ParseStmt T.Text
-  | InspectStmt T.Text
   | CompileStmt T.Text
-  | CompileProg T.Text
+  | InspectStmt T.Text
+  | WriteCompiledProg T.Text
   | ShowCtxts
   | Help
   | Quit
@@ -146,12 +146,48 @@ replStep (ExecStmt src) = Repl $ do
       put $ ExReplState $ \k ->
         k (SS n) ts' (ReplState program' names' vals')
 
-{--
-  | ParseStmt T.Text
-  | InspectStmt T.Text
-  | CompileStmt T.Text
-  | CompileProg T.Text
---}
+replStep (ParseStmt src) = Repl $ do
+  us <- runRepl $ replParseStmt src
+  liftIO $ print us
+
+replStep (CompileStmt src) = Repl $ do
+  exRS <- get
+  runExReplState exRS $ \_ ts rs -> do
+    us <- runRepl $ replParseStmt src
+    exSt <- liftEither $ mapLeft ReplTypeError $
+      checkStmt (names rs) ts us
+    let (_, cNames) = compileProg' (program rs)
+    runExStmt exSt $ \_ st ->
+      liftIO $ TIO.putStrLn $ emit $ compileStmt cNames st
+
+replStep (InspectStmt src) = Repl $ do
+  exRS <- get
+  runExReplState exRS $ \_ ts rs -> do
+    us <- runRepl $ replParseStmt src
+    liftIO $ putStr "=parse=> "
+    liftIO $ print us
+    exSt <- liftEither $ mapLeft ReplTypeError $
+      checkStmt (names rs) ts us
+    let (_, cNames) = compileProg' (program rs)
+    runExStmt exSt $ \(t ::: _) st -> liftIO $ do
+      putStr "=check=> "
+      print st
+      putStr "=eval=> "
+      let (v E.:> _) = evalStmt (vals rs) st
+      putStrLn $ showVal t v
+      let js = compileStmt cNames st
+      putStr "=compile=> "
+      print js
+      putStr "=emit=> "
+      TIO.putStrLn $ emit js
+
+-- TODO: handle IO errors
+replStep (WriteCompiledProg outfile) = Repl $ do
+  let path = T.unpack outfile
+  -- TODO: stuff (need prog/stmt parsers)
+  exRS <- get
+  runExReplState exRS $ \_ _ rs ->
+    liftIO $ TIO.writeFile path $ emit $ compileProg $ program rs
 
 replStep ShowCtxts = Repl $ do
   exRS <- get
