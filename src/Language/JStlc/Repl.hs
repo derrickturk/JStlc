@@ -8,19 +8,26 @@ module Language.JStlc.Repl (
   , Repl
   , ReplError(..)
   , initReplState
+  , replPrompt
   , replStep
   , runRepl
+  , runReplIO_
+  , replMain
+  , replParseCommand
 ) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.IO (hFlush, stdout)
-import System.IO.Error (isEOFError, catchIOError, ioError)
+import System.IO.Error (isEOFError, catchIOError)
 import System.Exit (exitSuccess)
 
 import Control.Monad.IO.Class
 import Control.Monad.Error.Class
 import Control.Monad.State.Class
+
+import Control.Monad.State.Strict
+import Control.Monad.Except
 
 import Data.Nat
 import Language.JStlc.Types
@@ -73,11 +80,18 @@ data ReplError =
     ReplParseError ParseError
   | ReplTypeError TypeError
   | InvalidReplCommand T.Text
+  | ReplIOError IOError
   deriving Show
 
 initReplState :: ExReplState
 initReplState = ExReplState $ \k ->
   k SZ STyNil (ReplState EmptyProg UNameNil CNil)
+
+replPrompt :: Repl ()
+replPrompt = Repl $ liftIO $ do
+  putStrLn ""
+  putStr "JStlc> "
+  liftIO (hFlush stdout)
 
 replStep :: ReplCommand -> Repl ()
 replStep (EvalTerm src) = Repl $ do
@@ -181,13 +195,11 @@ replStep (InspectStmt src) = Repl $ do
       putStr "=emit=> "
       TIO.putStrLn $ emit js
 
--- TODO: handle IO errors
 replStep (WriteCompiledProg outfile) = Repl $ do
   let path = T.unpack outfile
-  -- TODO: stuff (need prog/stmt parsers)
   exRS <- get
-  runExReplState exRS $ \_ _ rs ->
-    liftIO $ TIO.writeFile path $ emit $ compileProg $ program rs
+  runExReplState exRS $ \_ _ rs -> runRepl $ replWrapIO $
+    TIO.writeFile path $ emit $ compileProg $ program rs
 
 replStep ShowCtxts = Repl $ do
   exRS <- get
@@ -207,6 +219,59 @@ replParseTerm src = Repl $ liftEither $ mapLeft ReplParseError $
 replParseStmt :: T.Text -> Repl (UStmt n ('S n))
 replParseStmt src = Repl $ liftEither $ mapLeft ReplParseError $
   parse (space *> only stmt) "(REPL)" src
+
+replWrapIO :: IO () -> Repl ()
+replWrapIO m = Repl $ do
+  m' <- liftIO $ fallibly m
+  liftEither $ mapLeft ReplIOError $ m'
+  where
+    fallibly :: IO () -> IO (Either IOError ())
+    fallibly io = (Right <$> io) `catchIOError` (\e -> return (Left e))
+
+runReplIO_ :: Repl a -> ExReplState -> IO ()
+runReplIO_ (Repl r) s = () <$ execStateT (runExceptT r) s
+
+replMain :: Repl ()
+replMain = Repl $ do
+  runRepl replPrompt
+  do
+    cmd <- runRepl replParseCommand
+    runRepl $ replStep cmd
+    `catchError` (\e -> liftIO $ print e)
+  runRepl replMain
+
+replParseCommand :: Repl ReplCommand
+replParseCommand = Repl $ do
+  line <- liftIO $ TIO.getLine `catchIOError` handler
+  case parseCommand line commandDict of
+    Just cmd -> return cmd
+    Nothing -> throwError $ InvalidReplCommand line
+  where
+    handler e = if isEOFError e
+      then exitSuccess
+      else ioError e
+    parseCommand l [] = if T.head l == ':'
+      then Nothing
+      else Just $ EvalTerm l
+    parseCommand l ((c, f):dict) = case T.stripPrefix c l of
+      Just rest -> Just $ f rest
+      Nothing -> parseCommand l dict
+
+commandDict :: [(T.Text, T.Text -> ReplCommand)]
+commandDict = [ (":quit", const Quit)
+              , (":help", const Help)
+              -- these need to come first as some later commands
+              --   are prefixes of these
+              , (":exec", ExecStmt)
+              , (":parseStmt", ParseStmt)
+              , (":compileStmt", CompileStmt)
+              , (":inspectStmt", InspectStmt)
+              , (":type", TypeTerm)
+              , (":parse", ParseTerm)
+              , (":compile", CompileTerm)
+              , (":inspect", InspectTerm)
+              , (":write", WriteCompiledProg)
+              ]
 
 showCtxt :: STyCtxt as -> Ctxt as -> String
 showCtxt STyNil CNil = "CNil"

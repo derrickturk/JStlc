@@ -14,12 +14,13 @@ import Language.JStlc.Check
 import Language.JStlc.Eval
 import Language.JStlc.Compile
 import Language.JStlc.JS
+import Language.JStlc.Repl
 
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    [] -> banner >> repl
+    [] -> banner >> runReplIO_ replMain initReplState
     _ -> mapM_ compileFile args
 
 banner :: IO ()
