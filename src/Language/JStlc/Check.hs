@@ -5,7 +5,17 @@ module Language.JStlc.Check (
     TypeError(..)
   , ExTerm
   , runExTerm
+  , ExStmt
+  , runExStmt
+  , ExProg
+  , runExProg
   , check
+  , checkStmt
+  , checkStmt'
+  , checkProg
+  , checkProg'
+  , STyCtxt(..)
+  , UNameCtxt(..)
 ) where
 
 import qualified Data.Text as T
@@ -29,6 +39,18 @@ data TypeError :: * where
 --   the type alias version
 newtype ExTerm ctxt =
   ExTerm { runExTerm :: forall r . (forall a . STy a -> Term ctxt a -> r) -> r }
+
+newtype ExStmt before =
+  ExStmt { runExStmt :: forall r .
+                        (forall after . STyCtxt after -> Stmt before after -> r)
+                     -> r
+         }
+
+newtype ExProg =
+  ExProg { runExProg :: forall r .
+                        (forall as . STyCtxt as -> Prog as -> r)
+                     -> r
+         }
 
 data STyCtxt :: [Ty] -> * where
   STyNil :: STyCtxt '[]
@@ -240,6 +262,44 @@ checkBinOp UEq exX _ = runExTerm exX $
       \s -> Right $ ExBinOp (\k -> k s SBoolTy Eq)
     Nothing -> Left $ ExpectedEqType (unSTy sX)
 
+checkStmt :: UNameCtxt m
+          -> STyCtxt before
+          -> UStmt m n
+          -> Either TypeError (ExStmt before)
+checkStmt n c s = fst <$> checkStmt' n c s
+
+checkStmt' :: UNameCtxt m
+           -> STyCtxt before
+           -> UStmt m n
+           -> Either TypeError (ExStmt before, UNameCtxt n)
+checkStmt' n c (UDefine x t) = do
+  exT <- check' n c t
+  runExTerm exT $
+    \s t' -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
+
+checkStmt' n c (UDefineTyped x ty t) = do
+  exT <- check' n c t
+  runExTerm exT $ \s t' -> case testEquality s ty of
+    Just Refl -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
+    _ -> Left $ Mismatch (unSTy ty) (unSTy s)
+
+checkStmt' n c (UDefineRec x ty t) = do
+  exT <- check' (x :> n) (ty ::: c) t
+  runExTerm exT $ \s t' -> case testEquality s ty of
+    Just Refl -> Right (ExStmt (\k -> k (s ::: c) (DefineRec x ty t')), x :> n)
+    _ -> Left $ Mismatch (unSTy ty) (unSTy s)
+
+checkProg :: UProg n -> Either TypeError ExProg
+checkProg = fmap fst . checkProg'
+
+checkProg' :: UProg n -> Either TypeError (ExProg, UNameCtxt n)
+checkProg' UEmptyProg = Right (ExProg (\k -> k STyNil EmptyProg), CNil)
+checkProg' (p :&?: s) = do
+  (exP, n) <- checkProg' p
+  runExProg exP $ \pC pP -> do
+    (exS, n') <- checkStmt' n pC s
+    runExStmt exS $ \sC sS -> Right (ExProg (\k -> k sC (pP :&: sS)), n')
+
 instance Show TypeError where
   show (Mismatch e f) = "Mismatch (" ++ show e ++ ") (" ++ show f ++ ")"
   show (UndefinedVar x) = "UndefinedVar " ++ show x
@@ -250,3 +310,9 @@ instance Show TypeError where
 
 instance Show (ExTerm ctxt) where
   show exT = runExTerm exT $ \_ t -> show t
+
+instance Show (ExStmt before) where
+  show exS = runExStmt exS $ \_ s -> show s
+
+instance Show ExProg where
+  show exP = runExProg exP $ \_ p -> show p
