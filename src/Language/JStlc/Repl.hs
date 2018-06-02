@@ -18,8 +18,9 @@ module Language.JStlc.Repl (
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import Data.Monoid ((<>))
 import System.IO (hFlush, stdout)
-import System.IO.Error (isEOFError, catchIOError)
+import System.IO.Error (isEOFError, catchIOError, ioeGetErrorString)
 import System.Exit (exitSuccess)
 
 import Control.Monad.IO.Class
@@ -38,6 +39,7 @@ import Language.JStlc.Check as Ck
 import Language.JStlc.Eval as E
 import Language.JStlc.Compile as C
 import Language.JStlc.JS
+import Language.JStlc.Pretty.Class
 
 data ReplState n as = ReplState { program :: Prog as
                                 , names :: UNameCtxt n
@@ -172,7 +174,7 @@ replStep (CompileStmt src) = Repl $ do
       checkStmt (names rs) ts us
     let (_, cNames) = compileProg' (program rs)
     runExStmt exSt $ \_ st ->
-      liftIO $ TIO.putStrLn $ emit $ compileStmt cNames st
+      liftIO $ TIO.putStr $ emit $ compileStmt cNames st
 
 replStep (InspectStmt src) = Repl $ do
   exRS <- get
@@ -193,7 +195,7 @@ replStep (InspectStmt src) = Repl $ do
       putStr "=compile=> "
       print js
       putStr "=emit=> "
-      TIO.putStrLn $ emit js
+      TIO.putStr $ emit js
 
 replStep (WriteCompiledProg outfile) = Repl $ do
   let path = T.unpack outfile
@@ -209,7 +211,7 @@ replStep ShowCtxts = Repl $ do
     putStr "vals: "
     putStrLn $ showCtxt ts (vals rs)
 
-replStep Help = Repl $ liftIO $ TIO.putStrLn helpMsg
+replStep Help = Repl $ liftIO $ TIO.putStr helpMsg
 replStep Quit = Repl $ liftIO exitSuccess
 
 replParseTerm :: T.Text -> Repl (UTerm n)
@@ -237,7 +239,7 @@ replMain = Repl $ do
   do
     cmd <- runRepl replParseCommand
     runRepl $ replStep cmd
-    `catchError` (\e -> liftIO $ print e)
+    `catchError` (\e -> liftIO $ TIO.putStrLn $ pretty e)
   runRepl replMain
 
 replParseCommand :: Repl ReplCommand
@@ -282,10 +284,30 @@ mapLeft f (Left e) = Left $ f e
 mapLeft _ (Right e) = Right e
 
 helpMsg :: T.Text
-helpMsg = "help coming soon"
+helpMsg =
+  ":help - show this message\n" <>
+  ":quit - exit JStlc REPL\n" <>
+  ":type expr - parse and typecheck an expression\n" <>
+  ":parse expr - parse an expression and show the untyped AST\n" <>
+  ":compile expr - compile an expression to a JS expression\n" <>
+  ":inspect expr - parse, check, and compile an expression verbosely\n" <>
+  ":exec stmt - execute a statement, such as\n" <>
+  "    x = 17;\n" <>
+  "    f: Int -> Int = \\x : Int => 23;\n" <>
+  "    rec f: Int -> Int = \\x: Int => if x == 0 then 1 else x * f (x - 1);\n" <>
+  ":parseStmt stmt - parse a statement and show the untyped AST\n" <>
+  ":compileStmt stmt - compile a statement to a JS definition\n" <>
+  ":inspectStmt stmt - parse, check, and compile a statement verbosely\n" <>
+  ":write filename - compile all current definitions to specified JS file\n"
 
 instance Show ExReplState where
   show exRS = runExReplState exRS $ \_ ts rs ->
     "ReplState { program = " ++ show (program rs) ++
     ", names = " ++ show (names rs) ++
     ", vals = " ++ showCtxt ts (vals rs) ++ " }"
+
+instance Pretty ReplError where
+  pretty (ReplParseError e) = T.stripEnd $ T.pack $ parseErrorPretty e
+  pretty (ReplTypeError e) = pretty e
+  pretty (InvalidReplCommand c) = "Invalid REPL command: " <> c
+  pretty (ReplIOError e) = T.pack $ ioeGetErrorString e

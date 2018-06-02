@@ -30,6 +30,7 @@ library
                      , Language.JStlc.Unchecked
                      , Language.JStlc.Check
                      , Language.JStlc.Repl
+                     , Language.JStlc.Pretty.Class
                      , Data.Nat
   ghc-options:         -Wall -fno-warn-unused-do-bind -O2
 

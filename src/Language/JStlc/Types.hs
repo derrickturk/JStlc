@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Types (
     Ty(..)
@@ -14,8 +15,10 @@ module Language.JStlc.Types (
 ) where
 
 import qualified Data.Text as T
-
 import Data.Type.Equality
+import Data.Monoid ((<>))
+
+import Language.JStlc.Pretty.Class
 
 data Ty :: * where
   IntTy :: Ty
@@ -115,3 +118,14 @@ showVal (SListTy _) [] = "[]"
 showVal (SListTy a) (x:xs) = "[" ++ showVal a x ++ go a xs ++ "]" where
   go _ [] = ""
   go t (y:ys) = ", " ++ showVal t y ++ go t ys
+
+instance Pretty Ty where
+  pretty IntTy = "Int"
+  pretty BoolTy = "Bool"
+  pretty StringTy = "String"
+  pretty (FnTy a b) = pretty a <> " -> " <> pretty b
+  pretty (OptionTy a) = T.cons '?' $ pretty a
+  pretty (ListTy a) = T.cons '[' $ T.snoc (pretty a) ']'
+
+instance Pretty (STy a) where
+  pretty = pretty . unSTy

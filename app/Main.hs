@@ -13,6 +13,7 @@ import Language.JStlc.Check
 import Language.JStlc.Compile
 import Language.JStlc.JS
 import Language.JStlc.Repl
+import Language.JStlc.Pretty.Class
 
 main :: IO ()
 main = do
@@ -42,6 +43,6 @@ compileFile path = do
       \_ up -> case checkProg up of
         Left e -> do
           hPutStr stderr $ path ++ ": "
-          hPrint stderr e
+          TIO.hPutStrLn stderr (pretty e)
         Right exP -> runExProg exP $
           \_ p -> TIO.writeFile outPath $ emit $ compileProg p

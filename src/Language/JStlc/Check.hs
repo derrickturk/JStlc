@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Check (
     TypeError(..)
@@ -23,10 +24,12 @@ import qualified Data.Text as T
 
 import Data.Nat
 import Data.Type.Equality
+import Data.Monoid ((<>))
 
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
 import Language.JStlc.Syntax
+import Language.JStlc.Pretty.Class
 
 data TypeError :: * where
   Mismatch :: Ty -> Ty -> TypeError
@@ -345,3 +348,17 @@ instance Show (STyCtxt as) where
 instance Show (UNameCtxt n) where
   show UNameNil = "UNameNil"
   show (n :> ns) = show n ++ " :> " ++ show ns
+
+instance Pretty TypeError where
+  pretty (Mismatch ex found) = "Type error: expected " <>
+    pretty ex <> "; found " <> pretty found
+  pretty (UndefinedVar x) = "Undefined variable: " <> x
+  pretty (ExpectedFnType found) =
+    "Type error: expected function type; found " <> pretty found
+  pretty (ExpectedOptionType found) =
+    "Type error: expected option type; found " <> pretty found
+  pretty (ExpectedListType found) =
+    "Type error: expected list type; found " <> pretty found
+  pretty (ExpectedEqType found) =
+    "Type error: expected equality-supporting type; found " <> pretty found
+  pretty (DuplicateDef x) = "Multiple defintions for " <> x
