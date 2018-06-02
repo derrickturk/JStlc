@@ -7,11 +7,9 @@ import System.FilePath
 import System.IO
 import qualified Data.Text.IO as TIO
 
-import Language.JStlc.Types
 import Language.JStlc.Parse
 import Language.JStlc.Unchecked
 import Language.JStlc.Check
-import Language.JStlc.Eval
 import Language.JStlc.Compile
 import Language.JStlc.JS
 import Language.JStlc.Repl
@@ -47,30 +45,3 @@ compileFile path = do
           hPrint stderr e
         Right exP -> runExProg exP $
           \_ p -> TIO.writeFile outPath $ emit $ compileProg p
-
-repl :: IO ()
-repl = do
-  putStrLn ""
-  line <- TIO.getLine
-  if line == "quit"
-    then return ()
-    else do
-      let parsed = parse (space *> only term) "(REPL)" line
-      case parsed of
-        Left e -> putStrLn (parseErrorPretty e) >> repl
-        Right ut -> do
-          putStr "=parse=> "
-          print ut
-          case check ut of
-            Left e -> print e >> repl
-            Right exT -> runExTerm exT $ \s t -> do
-              putStr "=check=> "
-              putStrLn $ show t ++ " : " ++ show (unSTy s)
-              putStr "=eval=> "
-              putStrLn $ showVal s (eval t)
-              let js = compile t
-              putStr "=compile=> "
-              print js
-              putStr "=emit=> "
-              TIO.putStrLn $ emit js
-              repl
