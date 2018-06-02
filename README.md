@@ -94,4 +94,30 @@ Expressions consist of:
     - polymorphic list append: `++`
     - infix function application: `f $ x`
 
+Statements consist of:
+  - (Type-inferred) definitions: `x = 17;`, `f = \x: Int => x - 3;`
+  - (Type-checked) annotated definitions: `b: Bool = true;`, `c: Bool = b && false;`
+  - Recursive definitions (annotation required): `rec downFrom: Int -> [Int] = \x: Int => if x == 0 then nil: [Int] else x :: downFrom (x -1);`
+
+Statements are compiled to Javascript definitions one-for-one, e.g.:
+```
+JStlc> :compileStmt rec downFrom: Int -> [Int] = \x: Int => if x == 0 then nil: [Int] else x :: downFrom (x -1);
+function downFrom(x) {
+        return ((x) === (0.0)) ? ([]) : (([x]).concat((downFrom)((x) - (1.0))));
+}
+```
+
+## Caveats
+JStlc is a proof-of-concept and missing a lot of features a "real language"
+might want.
+The provided operators don't allow for much beyond arithmetic on integers,
+and the output JS leaves a lot to be desired in terms of optimization and
+number of unnecessary parentheses.
+
+It'd also be nice to use type-level vectors instead of lists to represent
+the typing contexts; this would provide even more static checking to ensure
+that the typing contexts and naming contexts stay "in sync" during the
+typechecking phase. See the stitch paper above for a nice implementation of
+these ideas.
+
 #### (c) 2018 dwt | terminus data science, LLC
