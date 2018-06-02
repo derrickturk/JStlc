@@ -1,14 +1,26 @@
 name:                JStlc
 version:             0.1.0.0
--- synopsis:
--- description:
+synopsis: (Extended) Simply-Typed Lambda Calculus REPL and Javascript Compiler
+description:
+  JStlc is a proof-of-concept interpreter and compiler which implements a
+  simply-typed lambda calculus, augmented with recursive bindings (via implicit
+  or explicit fixed-point combinator), "polymorphic" option and list types
+  as well as integer, boolean, and string types with basic operations.
+  
+  The JStlc REPL parses, typechecks, and evaluates terms and statements in an
+  interactive way; it can also be used to compile the current global definitions
+  to a Javascript file.
+  
+  When run as a compiler, JStlc will translate input JStlc files to output
+  Javascript files on a one-to-one basis.
+
 homepage:            https://github.com/githubuser/JStlc#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2018 Author name here
-category:            Web
+author:              Derrick W. Turk
+maintainer:          dwt@terminusdatascience.com
+copyright:           2018 Derrick W. Turk
+category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
