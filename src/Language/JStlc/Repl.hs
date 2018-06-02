@@ -254,7 +254,7 @@ replParseCommand = Repl $ do
       then Nothing
       else Just $ EvalTerm l
     parseCommand l ((c, f):dict) = case T.stripPrefix c l of
-      Just rest -> Just $ f rest
+      Just rest -> Just $ f $ T.stripStart rest
       Nothing -> parseCommand l dict
 
 commandDict :: [(T.Text, T.Text -> ReplCommand)]
