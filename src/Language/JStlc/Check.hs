@@ -65,12 +65,14 @@ newtype ExProg = ExProg { runExProg ::
 
 -- required for checking stmts
 -- they MUST share an existential context (to make the lengths unify)
+-- also, the length n must be a parameter to the newtype
 newtype ExNamedStmt before n = ExNamedStmt { runExNamedStmt ::
   forall r . (forall (after :: TyCtxt n) .
               STyCtxt after -> NameCtxt after -> Stmt before after -> r)
            -> r
   }
 
+-- the same holds here
 newtype ExNamedProg n = ExNamedProg { runExNamedProg ::
   forall r . (forall (as :: TyCtxt n) .
               STyCtxt as -> NameCtxt as -> Prog as -> r)
@@ -78,6 +80,8 @@ newtype ExNamedProg n = ExNamedProg { runExNamedProg ::
   }
 
 -- TODO: can we do this with a generic "SVect"?
+-- the intent was to use type STyCtxt as = HVect (STyVect as)
+-- but this causes trouble
 data STyCtxt :: forall (n :: Nat) . Vect n Ty -> Type where
   STyNil :: STyCtxt 'VNil
   (:::) :: STy a -> STyCtxt as -> STyCtxt (a ':> as)
@@ -342,7 +346,7 @@ checkProg' UEmptyProg = Right $ ExNamedProg (\k -> k STyNil VNil EmptyProg)
 checkProg' (p :&?: s) = do
   exNP <- checkProg' p
   runExNamedProg exNP $ \pC pN pP -> do
-    exNS <- checkStmt' pN pC s -- TODO: FUCK YOU s
+    exNS <- checkStmt' pN pC s
     runExNamedStmt exNS $ \sC sN sS -> Right $
       ExNamedProg $ \k -> k sC sN (pP :&: sS)
 
