@@ -45,6 +45,7 @@ library
                      , Language.JStlc.Pretty.Class
                      , Data.Nat
                      , Data.Vect
+                     , Data.Sing
   ghc-options:         -Wall -fno-warn-unused-do-bind -O2
 
 executable JStlc

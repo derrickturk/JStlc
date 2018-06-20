@@ -1,10 +1,12 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes, TypeInType #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Types (
     Ty(..)
-  , STy(..)
+  , Sing(..)
+  , STy
   , ISTy(..)
   , unSTy
   , ExSTy
@@ -12,10 +14,10 @@ module Language.JStlc.Types (
   , toExSTy
   , ValTy
   , TyCtxt
+  , STyCtxt
   , NameCtxt
   , Ctxt
   , ValTyVect
-  , STyVect
   , showVal
 ) where
 
@@ -26,6 +28,7 @@ import qualified Data.Text as T
 
 import Data.Nat
 import Data.Vect
+import Data.Sing
 
 import Language.JStlc.Pretty.Class
 
@@ -37,13 +40,15 @@ data Ty :: Type where
   OptionTy :: Ty -> Ty
   ListTy :: Ty -> Ty
 
-data STy :: Ty -> Type where
-  SIntTy :: STy 'IntTy 
-  SBoolTy :: STy 'BoolTy 
-  SStringTy :: STy 'StringTy 
-  SFnTy :: STy a -> STy b -> STy ('FnTy a b)
-  SOptionTy :: STy a -> STy ('OptionTy a)
-  SListTy :: STy a -> STy ('ListTy a)
+data instance Sing (a :: Ty) where
+  SIntTy :: Sing 'IntTy 
+  SBoolTy :: Sing 'BoolTy 
+  SStringTy :: Sing 'StringTy 
+  SFnTy :: Sing a -> Sing b -> Sing ('FnTy a b)
+  SOptionTy :: Sing a -> Sing ('OptionTy a)
+  SListTy :: Sing a -> Sing ('ListTy a)
+
+type STy (a :: Ty) = Sing a
 
 class ISTy a where
   sTy :: STy a
@@ -79,7 +84,8 @@ toExSTy (FnTy a b) = runExSTy (toExSTy a) $ \sA ->
 toExSTy (OptionTy a) = runExSTy (toExSTy a) $ \sA -> ExSTy ($ (SOptionTy sA))
 toExSTy (ListTy a) = runExSTy (toExSTy a) $ \sA -> ExSTy ($ (SListTy sA))
 
-instance TestEquality STy where
+-- P R A I S E  T H E  C  U  S  K
+instance TestEquality (Sing :: Ty -> Type) where
   testEquality SIntTy SIntTy = Just Refl
   testEquality SBoolTy SBoolTy = Just Refl
   testEquality SStringTy SStringTy = Just Refl
@@ -100,16 +106,13 @@ type family ValTy (a :: Ty) = v | v -> a where
   ValTy ('ListTy a) = [ValTy a]
 
 type TyCtxt (n :: Nat) = Vect n Ty
+type STyCtxt (as :: TyCtxt n) = SVect as
 type NameCtxt (as :: TyCtxt n) = Vect (VLength as) T.Text
 type Ctxt as = HVect (ValTyVect as)
 
 type family ValTyVect (as :: TyCtxt n) = (r :: Vect n Type) | r -> as where
   ValTyVect 'VNil = 'VNil
   ValTyVect (a ':> as) = ValTy a ':> ValTyVect as
-
-type family STyVect (as :: TyCtxt n) = (r :: Vect n Type) | r -> as where
-  STyVect 'VNil = 'VNil
-  STyVect (a ':> as) = STy a ':> STyVect as
 
 instance Show Ty where
   show IntTy = "IntTy"

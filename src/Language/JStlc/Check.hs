@@ -21,7 +21,6 @@ module Language.JStlc.Check (
   , checkStmt'
   , checkProg
   , checkProg'
-  , STyCtxt(..)
 ) where
 
 import Data.Kind (Type)
@@ -31,6 +30,7 @@ import qualified Data.Text as T
 
 import Data.Nat
 import Data.Vect
+import Data.Sing
 
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
@@ -79,20 +79,12 @@ newtype ExNamedProg n = ExNamedProg { runExNamedProg ::
           -> r
   }
 
--- TODO: can we do this with a generic "SVect"?
--- the intent was to use type STyCtxt as = HVect (STyVect as)
--- but this causes trouble
-data STyCtxt :: forall (n :: Nat) . Vect n Ty -> Type where
-  STyNil :: STyCtxt 'VNil
-  (:::) :: STy a -> STyCtxt as -> STyCtxt (a ':> as)
-infixr 5 :::
-
 defined :: T.Text -> Vect n T.Text -> Bool
 defined _ VNil = False
 defined x (n :> ns) = if x == n then True else defined x ns
 
 check :: UTerm 'Z -> Either TypeError (ExTerm 'VNil)
-check = check' VNil STyNil
+check = check' VNil SVNil
 
 check' :: forall (n :: Nat) (as :: TyCtxt n) . NameCtxt as -> STyCtxt as -> UTerm n -> Either TypeError (ExTerm as)
 
@@ -104,7 +96,7 @@ check' n c (UVar x) = case varIx n c x of
 check' _ _ (ULit v) = Right $ ExTerm (\k -> k sTy (Lit v))
 
 check' n c (ULam x ty body) = do
-  exBody <- check' (x :> n) (ty ::: c) body
+  exBody <- check' (x :> n) (ty :-> c) body
   runExTerm exBody $
     \sBody tBody -> Right $ ExTerm (\k -> k (SFnTy ty sBody) (Lam x ty tBody))
 
@@ -123,16 +115,16 @@ check' n c (ULet x t u) = do
   exT <- check' n c t
   runExTerm exT $
     \sT tT -> do
-      exU <- check' (x :> n) (sT ::: c) u
+      exU <- check' (x :> n) (sT :-> c) u
       runExTerm exU $
         \sU tU -> Right $ ExTerm (\k -> k sU (Let x tT tU))
 
 check' n c (ULetRec x ty t u) = do
-  exT <- check' (x :> n) (ty ::: c) t
+  exT <- check' (x :> n) (ty :-> c) t
   runExTerm exT $
     \sT tT -> case testEquality ty sT of
         Just Refl -> do
-          exU <- check' (x :> n) (ty ::: c) u
+          exU <- check' (x :> n) (ty :-> c) u
           runExTerm exU $
             \sU tU -> Right $ ExTerm (\k -> k sU (LetRec x ty tT tU))
         _ -> Left $ Mismatch (unSTy ty) (unSTy sT)
@@ -239,8 +231,8 @@ newtype ExIx ctxt =
 
 varIx :: NameCtxt as -> STyCtxt as -> T.Text -> Maybe (ExIx as)
 varIx VNil _ _ = Nothing 
--- varIx _ STyNil _ = Nothing / this case is statically detected as impossible!
-varIx (x :> xs) (ty ::: tys) name = if name == x
+-- varIx _ SVNil _ = Nothing / this case is statically detected as impossible!
+varIx (x :> xs) (ty :-> tys) name = if name == x
   then Just $ ExIx (\k -> k ty IZ)
   else do
     exIx <- varIx xs tys name
@@ -317,7 +309,7 @@ checkStmt' n c (UDefine x t) = if defined x n
   else do
     exT <- check' n c t
     runExTerm exT $
-      \s t' -> Right $ ExNamedStmt (\k -> k (s ::: c) (x :> n) (Define x t'))
+      \s t' -> Right $ ExNamedStmt (\k -> k (s :-> c) (x :> n) (Define x t'))
 
 checkStmt' n c (UDefineTyped x ty t) = if defined x n
   then Left $ DuplicateDef x
@@ -325,16 +317,16 @@ checkStmt' n c (UDefineTyped x ty t) = if defined x n
     exT <- check' n c t
     runExTerm exT $ \s t' -> case testEquality s ty of
       Just Refl -> Right $
-        ExNamedStmt (\k -> k (s ::: c) (x :> n) (Define x t'))
+        ExNamedStmt (\k -> k (s :-> c) (x :> n) (Define x t'))
       _ -> Left $ Mismatch (unSTy ty) (unSTy s)
 
 checkStmt' n c (UDefineRec x ty t) = if defined x n
   then Left $ DuplicateDef x
   else do
-    exT <- check' (x :> n) (ty ::: c) t
+    exT <- check' (x :> n) (ty :-> c) t
     runExTerm exT $ \s t' -> case testEquality s ty of
       Just Refl ->
-        Right $ ExNamedStmt (\k -> k (s ::: c) (x :> n) (DefineRec x ty t'))
+        Right $ ExNamedStmt (\k -> k (s :-> c) (x :> n) (DefineRec x ty t'))
       _ -> Left $ Mismatch (unSTy ty) (unSTy s)
 
 checkProg :: UProg n -> Either TypeError ExProg
@@ -342,7 +334,7 @@ checkProg p = checkProg' p >>= \exNP ->
   runExNamedProg exNP $ \pC _ pP -> Right $ ExProg (\k -> k pC pP)
 
 checkProg' :: UProg n -> Either TypeError (ExNamedProg n)
-checkProg' UEmptyProg = Right $ ExNamedProg (\k -> k STyNil VNil EmptyProg)
+checkProg' UEmptyProg = Right $ ExNamedProg (\k -> k SVNil VNil EmptyProg)
 checkProg' (p :&?: s) = do
   exNP <- checkProg' p
   runExNamedProg exNP $ \pC pN pP -> do
@@ -367,10 +359,6 @@ instance Show (ExStmt before) where
 
 instance Show ExProg where
   show exP = runExProg exP $ \_ p -> show p
-
-instance Show (STyCtxt as) where
-  show STyNil = "STyNil"
-  show (t ::: ts) = show t ++ " ::: " ++ show ts
 
 instance Pretty TypeError where
   pretty (Mismatch ex found) = "Type error: expected " <>

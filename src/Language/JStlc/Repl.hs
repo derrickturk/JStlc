@@ -33,6 +33,7 @@ import Control.Monad.Except
 
 import Data.Nat
 import Data.Vect
+import Data.Sing
 
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
@@ -91,7 +92,7 @@ data ReplError =
 
 initReplState :: ExReplState
 initReplState = ExReplState $ \k ->
-  k SZ STyNil (ReplState EmptyProg VNil HVNil)
+  k SZ SVNil (ReplState EmptyProg VNil HVNil)
 
 replPrompt :: Repl ()
 replPrompt = Repl $ liftIO $ do
@@ -189,7 +190,7 @@ replStep (InspectStmt src) = Repl $ do
     exSt <- liftEither $ mapLeft ReplTypeError $
       checkStmt (names rs) ts us
     let (_, cNames) = compileProg' (program rs)
-    runExStmt exSt $ \(t ::: _) st -> liftIO $ do
+    runExStmt exSt $ \(t :-> _) st -> liftIO $ do
       putStr "=check=> "
       print st
       putStr "=eval=> "
@@ -280,8 +281,8 @@ commandDict = [ (":quit", const Quit)
               ]
 
 showCtxt :: STyCtxt as -> Ctxt as -> String
-showCtxt STyNil HVNil = "VNil"
-showCtxt (t ::: ts) (x ::> xs) = showVal t x ++ " ::> " ++ showCtxt ts xs
+showCtxt SVNil HVNil = "VNil"
+showCtxt (t :-> ts) (x ::> xs) = showVal t x ++ " ::> " ++ showCtxt ts xs
 
 mapLeft :: (a -> c) -> Either a b -> Either c b
 mapLeft f (Left e) = Left $ f e
