@@ -16,6 +16,7 @@ module Language.JStlc.Compile (
 import Prelude hiding (lookup)
 import qualified Data.Text as T
 
+import Data.Nat
 import Data.Vect
 
 import Language.JStlc.Types
@@ -42,24 +43,27 @@ jsOpName StrCat = "+"
 jsOpName Append = error "ICE"
 jsOpName Eq = "==="
 
--- TODO: consider alternatives
-jsFix :: JS
+-- TODO: design compilation so that names don't exist in Vars
+--   but get pulled from binders in a checkable way
+jsFix :: JS n
 jsFix = JSLambda "f"
   (JSCall
-    (JSLambda "x" (JSCall
-                    (JSVar "f")
-                    [(JSLambda "y" (JSCall (JSCall (JSVar "x") [(JSVar "x")])
-                                          [(JSVar "y")]))]))
-    [(JSLambda "x" (JSCall
-                    (JSVar "f")
-                    [(JSLambda "y" (JSCall (JSCall (JSVar "x") [(JSVar "x")])
-                                          [(JSVar "y")]))]))])
+    (JSLambda "x"
+      (JSCall (JSVar (FS FZ) "f")
+              [(JSLambda "y"
+                 (JSCall (JSCall (JSVar (FS FZ) "x") [(JSVar (FS FZ) "x")])
+                         [(JSVar FZ "y")]))]))
+    [(JSLambda "x"
+      (JSCall (JSVar (FS FZ) "f")
+              [(JSLambda "y"
+                 (JSCall (JSCall (JSVar (FS FZ) "x") [(JSVar (FS FZ) "x")])
+                         [(JSVar FZ "y")]))]))])
 
-compile :: Term 'VNil a -> JS
+compile :: Term 'VNil a -> JS 'Z
 compile = compile' VNil
 
-compile' :: NameCtxt as -> Term as a -> JS
-compile' c (Var i) = JSVar $ lookup i c
+compile' :: NameCtxt as -> Term as a -> JS (VLength as)
+compile' c (Var i) = JSVar (toFin i) (lookup i c)
 compile' _ (Lit v) = toJS v
 compile' c (Lam x _ body) = JSLambda x (compile' (x :> c) body)
 compile' c (App f x) = JSCall (compile' c f) [(compile' c x)]
@@ -68,7 +72,7 @@ compile' c (Let x t u) =
 compile' c (LetRec x ty t u) = -- TODO: optimize this
   compile' c (Let x (Fix (Lam x ty t)) u)
 compile' c (Fix t) = JSCall jsFix [compile' c t]
-compile' _ (None _) = JSVar "null"
+compile' _ (None _) = JSBuiltIn "null"
 compile' c (Some t) = compile' c t
 compile' _ (Nil _) = JSArray []
 compile' c (Cons x (Nil _)) = JSArray [compile' c x]
@@ -84,26 +88,28 @@ compile' c (IfThenElse cond t f) =
 compile' c (FoldL f x xs) =
   JSMethod (compile' c xs) "reduce" [compile' c f, compile' c x]
 compile' c (MapOption f x) = let x' = compile' c x in
-  JSCondExpr (JSBinOpApp "!==" x' (JSVar "null")) (JSCall (compile' c f) [x']) x'
+  JSCondExpr (JSBinOpApp "!==" x' (JSBuiltIn "null"))
+             (JSCall (compile' c f) [x'])
+             x'
 compile' c (MapList f x) = JSMethod (compile' c x) "map" [(compile' c f)]
 
-compileStmt :: NameCtxt before -> Stmt before after -> JSStmt
+compileStmt :: NameCtxt before -> Stmt before after -> JSStmt (VLength before) (VLength after)
 compileStmt c s = fst $ compileStmt' c s
 
-compileStmt' :: NameCtxt before -> Stmt before after -> (JSStmt, NameCtxt after)
+compileStmt' :: NameCtxt before -> Stmt before after -> (JSStmt (VLength before) (VLength after), NameCtxt after)
 compileStmt' c (Define f (Lam x _ body)) = 
-  (JSFunDef f [x] (compile' (x :> c) body), f :> c)
+  (JSFunDef f (x :> VNil) (compile' (x :> c) body), f :> c)
 compileStmt' c (Define x t) = (JSLet x (compile' c t), x :> c)
 compileStmt' c (DefineRec f _ (Lam x _ body)) =
-  (JSFunDef f [x] (compile' (x :> f :> c) body), f :> c)
+  (JSFunDefRec f (x :> VNil) (compile' (x :> f :> c) body), f :> c)
 compileStmt' c (DefineRec x ty t) =
   (JSLet x (compile' c (Fix (Lam x ty t))), x :> c)
 
-compileProg :: Prog as -> JSProg
+compileProg :: Prog as -> JSProg (VLength as)
 compileProg =  fst . compileProg'
 
-compileProg' :: Prog as -> (JSProg, NameCtxt as)
-compileProg' EmptyProg = ([], VNil)
+compileProg' :: Prog as -> (JSProg (VLength as), NameCtxt as)
+compileProg' EmptyProg = (JSEmptyProg, VNil)
 compileProg' (p :&: s) = let (jsP, c) = compileProg' p
                              (jsS, c') = compileStmt' c s in
-                             (jsP ++ [jsS], c')
+                             (jsP :&&: jsS, c')

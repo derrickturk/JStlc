@@ -49,6 +49,10 @@ deriving instance Show a => Show (Vect n a)
 deriving instance Eq a => Eq (Vect n a)
 deriving instance Functor (Vect n)
 
+instance Foldable (Vect n) where
+  foldMap _ VNil = mempty
+  foldMap f (x :> xs) = f x `mappend` foldMap f xs
+
 instance Show (HVect 'VNil) where
   show HVNil = "HVNil"
 instance (Show a, Show (HVect as)) => Show (HVect (a ':> as)) where

@@ -1,39 +1,51 @@
+{-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
+{-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes, StandaloneDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.JS (
     JS(..)
   , JSStmt(..)
-  , JSProg
+  , JSProg(..)
   , ToJS(..)
   , Emit(..)
 ) where
 
 import Data.Monoid ((<>))
+import Data.Foldable (toList)
 import qualified Data.Text as T
 
-data JS =
-    JSBool Bool
-  | JSNumber Double
-  | JSString T.Text
-  | JSVar T.Text
-  | JSArray [JS]
-  | JSLambda T.Text JS
-  | JSCall JS [JS]
-  | JSMethod JS T.Text [JS]
-  | JSCondExpr JS JS JS
-  | JSUnOpApp T.Text JS
-  | JSBinOpApp T.Text JS JS
+import Data.Nat
+import Data.Vect
+
+data JS :: Nat -> * where
+  JSBool :: Bool -> JS n
+  JSNumber :: Double -> JS n
+  JSString :: T.Text -> JS n
+  JSBuiltIn :: T.Text -> JS n
+  JSVar :: Fin n -> T.Text -> JS n
+  JSArray :: [JS n] -> JS n
+  JSLambda :: T.Text -> JS ('S n) -> JS n
+  JSCall :: JS n -> [JS n] -> JS n
+  JSMethod :: JS n -> T.Text -> [JS n] -> JS n
+  JSCondExpr :: JS n -> JS n -> JS n -> JS n
+  JSUnOpApp :: T.Text -> JS n -> JS n
+  JSBinOpApp :: T.Text -> JS n -> JS n -> JS n
   deriving Show
 
-data JSStmt =
-    JSLet T.Text JS
-  | JSFunDef T.Text [T.Text] JS
-    deriving Show
+data JSStmt :: Nat -> Nat -> * where
+  JSLet :: T.Text -> JS n -> JSStmt n ('S n)
+  JSFunDef :: T.Text -> Vect m T.Text -> JS (n :+: m) -> JSStmt n ('S n)
+  -- TODO: find a way to unify this with JSFunDef
+  -- (likely by shifting... somewhere)
+  JSFunDefRec :: T.Text -> Vect m T.Text -> JS ('S (n :+: m)) -> JSStmt n ('S n)
 
-type JSProg = [JSStmt]
+data JSProg :: Nat -> * where
+  JSEmptyProg :: JSProg 'Z
+  (:&&:) :: JSProg m -> JSStmt m n -> JSProg n
+infixr 5 :&&:
 
 class ToJS a where
-  toJS :: a -> JS
+  toJS :: a -> JS n
 
 instance ToJS Bool where
   toJS = JSBool
@@ -46,7 +58,7 @@ instance ToJS T.Text where
     escape = T.replace "\"" "\\\""
 
 instance ToJS a => ToJS (Maybe a) where
-  toJS Nothing = JSVar "null"
+  toJS Nothing = JSBuiltIn "null"
   toJS (Just v) = toJS v
 
 instance ToJS a => ToJS [a] where
@@ -55,12 +67,13 @@ instance ToJS a => ToJS [a] where
 class Emit a where
   emit :: a -> T.Text
 
-instance Emit JS where
+instance Emit (JS n) where
   emit (JSBool True) = "true"
   emit (JSBool False) = "false"
   emit (JSNumber x) = T.pack $ show x
   emit (JSString s) = T.cons '\"' $ T.snoc s '\"'
-  emit (JSVar x) = x
+  emit (JSBuiltIn x) = x
+  emit (JSVar _ x) = x
   emit (JSArray xs) =
     T.cons '[' $ T.snoc (T.intercalate ", " $ fmap emit xs) ']'
   emit (JSLambda x body) =
@@ -75,11 +88,20 @@ instance Emit JS where
   emit (JSUnOpApp op x) = op <> "(" <> emit x <> ")"
   emit (JSBinOpApp op x y) = "(" <> emit x <> ") " <> op <> " (" <> emit y <> ")"
 
-instance Emit JSStmt where
+instance Emit (JSStmt n m) where
   emit (JSLet x t) = "var " <> x <> " = " <> emit t <> ";\n"
   emit (JSFunDef f args body) =
-    "function " <> f <> "(" <> T.intercalate ", " args <> ") {\n\treturn "
+    "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n\treturn "
+    <> emit body <> ";\n}\n"
+  emit (JSFunDefRec f args body) =
+    "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n\treturn "
     <> emit body <> ";\n}\n"
 
-instance Emit a => Emit [a] where
-  emit = T.intercalate "\n" . fmap emit
+instance Emit (JSProg n) where
+  emit = T.intercalate "\n" . go [] where
+    go :: [T.Text] -> JSProg n -> [T.Text]
+    go stmts JSEmptyProg = stmts
+    go stmts (p :&&: s) = go ((emit s):stmts) p
+
+deriving instance Show (JSStmt m n)
+deriving instance Show (JSProg n)

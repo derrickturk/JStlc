@@ -4,6 +4,7 @@
 
 module Language.JStlc.Syntax (
     Ix(..)
+  , toFin
   , BinOp(..)
   , Term(..)
   , Stmt(..)
@@ -24,6 +25,10 @@ import Language.JStlc.JS
 data Ix :: forall (n :: Nat) a . Vect n a -> a -> Type where
   IZ :: Ix (a ':> as) a
   IS :: Ix as a -> Ix (b ':> as) a
+
+toFin :: Ix as a -> Fin (VLength as)
+toFin IZ = FZ
+toFin (IS i) = FS (toFin i)
 
 data BinOp :: Ty -> Ty -> Type where
   Add :: BinOp 'IntTy 'IntTy
