@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
-{-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE TypeOperators, FlexibleContexts #-}
+{-# LANGUAGE RankNTypes, TypeInType #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Check (
@@ -10,6 +11,10 @@ module Language.JStlc.Check (
   , runExStmt
   , ExProg
   , runExProg
+  , ExNamedStmt
+  , runExNamedStmt
+  , ExNamedProg
+  , runExNamedProg
   , check
   , check'
   , checkStmt
@@ -17,21 +22,22 @@ module Language.JStlc.Check (
   , checkProg
   , checkProg'
   , STyCtxt(..)
-  , UNameCtxt(..)
 ) where
 
+import Data.Kind (Type)
+import Data.Type.Equality
+import Data.Monoid ((<>))
 import qualified Data.Text as T
 
 import Data.Nat
-import Data.Type.Equality
-import Data.Monoid ((<>))
+import Data.Vect
 
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
 import Language.JStlc.Syntax
 import Language.JStlc.Pretty.Class
 
-data TypeError :: * where
+data TypeError :: Type where
   Mismatch :: Ty -> Ty -> TypeError
   UndefinedVar :: T.Text -> TypeError
   ExpectedFnType :: Ty -> TypeError
@@ -45,36 +51,46 @@ data TypeError :: * where
 newtype ExTerm ctxt =
   ExTerm { runExTerm :: forall r . (forall a . STy a -> Term ctxt a -> r) -> r }
 
-newtype ExStmt before =
-  ExStmt { runExStmt :: forall r .
-                        (forall after . STyCtxt after -> Stmt before after -> r)
-                     -> r
-         }
+newtype ExStmt before = ExStmt { runExStmt ::
+  forall r . (forall (m :: Nat) (after :: TyCtxt m) .
+              STyCtxt after -> Stmt before after -> r)
+          -> r
+  }
 
-newtype ExProg =
-  ExProg { runExProg :: forall r .
-                        (forall as . STyCtxt as -> Prog as -> r)
-                     -> r
-         }
+newtype ExProg = ExProg { runExProg ::
+  forall r . (forall (n :: Nat) (as :: TyCtxt n) .
+              STyCtxt as -> Prog as -> r)
+          -> r
+  }
 
-data STyCtxt :: [Ty] -> * where
-  STyNil :: STyCtxt '[]
-  (:::) :: STy a -> STyCtxt as -> STyCtxt (a ': as)
+-- required for checking stmts
+-- they MUST share an existential context (to make the lengths unify)
+newtype ExNamedStmt before n = ExNamedStmt { runExNamedStmt ::
+  forall r . (forall (after :: TyCtxt n) .
+              STyCtxt after -> NameCtxt after -> Stmt before after -> r)
+           -> r
+  }
+
+newtype ExNamedProg n = ExNamedProg { runExNamedProg ::
+  forall r . (forall (as :: TyCtxt n) .
+              STyCtxt as -> NameCtxt as -> Prog as -> r)
+          -> r
+  }
+
+-- TODO: can we do this with a generic "SVect"?
+data STyCtxt :: forall (n :: Nat) . Vect n Ty -> Type where
+  STyNil :: STyCtxt 'VNil
+  (:::) :: STy a -> STyCtxt as -> STyCtxt (a ':> as)
 infixr 5 :::
 
-data UNameCtxt :: Nat -> * where
-  UNameNil :: UNameCtxt 'Z
-  (:>) :: T.Text -> UNameCtxt n -> UNameCtxt ('S n)
-infixr 5 :>
-
-defined :: T.Text -> UNameCtxt n -> Bool
-defined _ UNameNil = False
+defined :: T.Text -> Vect n T.Text -> Bool
+defined _ VNil = False
 defined x (n :> ns) = if x == n then True else defined x ns
 
-check :: UTerm 'Z -> Either TypeError (ExTerm '[])
-check = check' UNameNil STyNil
+check :: UTerm 'Z -> Either TypeError (ExTerm 'VNil)
+check = check' VNil STyNil
 
-check' :: UNameCtxt n -> STyCtxt as -> UTerm n -> Either TypeError (ExTerm as)
+check' :: forall (n :: Nat) (as :: TyCtxt n) . NameCtxt as -> STyCtxt as -> UTerm n -> Either TypeError (ExTerm as)
 
 check' n c (UVar x) = case varIx n c x of
   Just exX -> runExIx exX $
@@ -217,9 +233,9 @@ check' n c (UMap f x) = do
 newtype ExIx ctxt =
   ExIx { runExIx :: forall r . (forall a . STy a -> Ix ctxt a -> r) -> r }
 
-varIx :: UNameCtxt n -> STyCtxt as -> T.Text -> Maybe (ExIx as)
-varIx UNameNil _ _ = Nothing 
-varIx _ STyNil _ = Nothing -- TODO: these cases unify with Vects
+varIx :: NameCtxt as -> STyCtxt as -> T.Text -> Maybe (ExIx as)
+varIx VNil _ _ = Nothing 
+-- varIx _ STyNil _ = Nothing / this case is statically detected as impossible!
 varIx (x :> xs) (ty ::: tys) name = if name == x
   then Just $ ExIx (\k -> k ty IZ)
   else do
@@ -276,31 +292,36 @@ checkBinOp UEq exX _ = runExTerm exX $
       \s -> Right $ ExBinOp (\k -> k s SBoolTy Eq)
     Nothing -> Left $ ExpectedEqType (unSTy sX)
 
-checkStmt :: UNameCtxt m
+checkStmt :: forall (m :: Nat) (before :: TyCtxt m) (n :: Nat)
+           . NameCtxt before
           -> STyCtxt before
           -> UStmt m n
           -> Either TypeError (ExStmt before)
-checkStmt n c s = fst <$> checkStmt' n c s
+checkStmt n c s = do
+  exNS <- checkStmt' n c s
+  runExNamedStmt exNS $ \sC _ sS -> Right $ ExStmt (\k -> k sC sS)
 
 -- TODO: enforce uniqueness of names in types
 
-checkStmt' :: UNameCtxt m
+checkStmt' :: forall (m :: Nat) (before :: TyCtxt m) (n :: Nat)
+            . NameCtxt before
            -> STyCtxt before
            -> UStmt m n
-           -> Either TypeError (ExStmt before, UNameCtxt n)
+           -> Either TypeError (ExNamedStmt before n)
 checkStmt' n c (UDefine x t) = if defined x n
   then Left $ DuplicateDef x
   else do
     exT <- check' n c t
     runExTerm exT $
-      \s t' -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
+      \s t' -> Right $ ExNamedStmt (\k -> k (s ::: c) (x :> n) (Define x t'))
 
 checkStmt' n c (UDefineTyped x ty t) = if defined x n
   then Left $ DuplicateDef x
   else do
     exT <- check' n c t
     runExTerm exT $ \s t' -> case testEquality s ty of
-      Just Refl -> Right (ExStmt (\k -> k (s ::: c) (Define x t')), x :> n)
+      Just Refl -> Right $
+        ExNamedStmt (\k -> k (s ::: c) (x :> n) (Define x t'))
       _ -> Left $ Mismatch (unSTy ty) (unSTy s)
 
 checkStmt' n c (UDefineRec x ty t) = if defined x n
@@ -309,19 +330,21 @@ checkStmt' n c (UDefineRec x ty t) = if defined x n
     exT <- check' (x :> n) (ty ::: c) t
     runExTerm exT $ \s t' -> case testEquality s ty of
       Just Refl ->
-        Right (ExStmt (\k -> k (s ::: c) (DefineRec x ty t')), x :> n)
+        Right $ ExNamedStmt (\k -> k (s ::: c) (x :> n) (DefineRec x ty t'))
       _ -> Left $ Mismatch (unSTy ty) (unSTy s)
 
 checkProg :: UProg n -> Either TypeError ExProg
-checkProg = fmap fst . checkProg'
+checkProg p = checkProg' p >>= \exNP ->
+  runExNamedProg exNP $ \pC _ pP -> Right $ ExProg (\k -> k pC pP)
 
-checkProg' :: UProg n -> Either TypeError (ExProg, UNameCtxt n)
-checkProg' UEmptyProg = Right (ExProg (\k -> k STyNil EmptyProg), UNameNil)
+checkProg' :: UProg n -> Either TypeError (ExNamedProg n)
+checkProg' UEmptyProg = Right $ ExNamedProg (\k -> k STyNil VNil EmptyProg)
 checkProg' (p :&?: s) = do
-  (exP, n) <- checkProg' p
-  runExProg exP $ \pC pP -> do
-    (exS, n') <- checkStmt' n pC s
-    runExStmt exS $ \sC sS -> Right (ExProg (\k -> k sC (pP :&: sS)), n')
+  exNP <- checkProg' p
+  runExNamedProg exNP $ \pC pN pP -> do
+    exNS <- checkStmt' pN pC s -- TODO: FUCK YOU s
+    runExNamedStmt exNS $ \sC sN sS -> Right $
+      ExNamedProg $ \k -> k sC sN (pP :&: sS)
 
 instance Show TypeError where
   show (Mismatch e f) = "Mismatch (" ++ show e ++ ") (" ++ show f ++ ")"
@@ -344,10 +367,6 @@ instance Show ExProg where
 instance Show (STyCtxt as) where
   show STyNil = "STyNil"
   show (t ::: ts) = show t ++ " ::: " ++ show ts
-
-instance Show (UNameCtxt n) where
-  show UNameNil = "UNameNil"
-  show (n :> ns) = show n ++ " :> " ++ show ns
 
 instance Pretty TypeError where
   pretty (Mismatch ex found) = "Type error: expected " <>

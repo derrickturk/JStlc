@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs, TypeOperators, DataKinds, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE TypeInType #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Repl (
@@ -16,9 +17,9 @@ module Language.JStlc.Repl (
   , replParseCommand
 ) where
 
+import Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Monoid ((<>))
 import System.IO (hFlush, stdout)
 import System.IO.Error (isEOFError, catchIOError, ioeGetErrorString)
 import System.Exit (exitSuccess)
@@ -31,6 +32,8 @@ import Control.Monad.State.Strict
 import Control.Monad.Except
 
 import Data.Nat
+import Data.Vect
+
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
 import Language.JStlc.Syntax as S
@@ -41,10 +44,11 @@ import Language.JStlc.Compile as C
 import Language.JStlc.JS
 import Language.JStlc.Pretty.Class
 
-data ReplState n as = ReplState { program :: Prog as
-                                , names :: UNameCtxt n
-                                , vals :: Ctxt as
-                                }
+data ReplState (n :: Nat) (as :: TyCtxt n) =
+  ReplState { program :: Prog as
+            , names :: NameCtxt as
+            , vals :: Ctxt as
+            }
 
 newtype ExReplState =
   ExReplState { runExReplState :: forall r .
@@ -87,7 +91,7 @@ data ReplError =
 
 initReplState :: ExReplState
 initReplState = ExReplState $ \k ->
-  k SZ STyNil (ReplState EmptyProg UNameNil CNil)
+  k SZ STyNil (ReplState EmptyProg VNil HVNil)
 
 replPrompt :: Repl ()
 replPrompt = Repl $ liftIO $ do
@@ -154,9 +158,9 @@ replStep (ExecStmt src) = Repl $ do
   exRS <- get
   runExReplState exRS $ \n ts rs -> do
     us <- runRepl $ replParseStmt src
-    (exSt, names') <- liftEither $ mapLeft ReplTypeError $
+    exNS <- liftEither $ mapLeft ReplTypeError $
       checkStmt' (names rs) ts us
-    runExStmt exSt $ \ts' st -> do
+    runExNamedStmt exNS $ \ts' names' st -> do
       let vals' = evalStmt (vals rs) st
           program' = program rs :&: st
       put $ ExReplState $ \k ->
@@ -189,7 +193,7 @@ replStep (InspectStmt src) = Repl $ do
       putStr "=check=> "
       print st
       putStr "=eval=> "
-      let (v E.:> _) = evalStmt (vals rs) st
+      let (v ::> _) = evalStmt (vals rs) st
       putStrLn $ showVal t v
       let js = compileStmt cNames st
       putStr "=compile=> "
@@ -276,8 +280,8 @@ commandDict = [ (":quit", const Quit)
               ]
 
 showCtxt :: STyCtxt as -> Ctxt as -> String
-showCtxt STyNil CNil = "CNil"
-showCtxt (t ::: ts) (x E.:> xs) = showVal t x ++ " :> " ++ showCtxt ts xs
+showCtxt STyNil HVNil = "VNil"
+showCtxt (t ::: ts) (x ::> xs) = showVal t x ++ " ::> " ++ showCtxt ts xs
 
 mapLeft :: (a -> c) -> Either a b -> Either c b
 mapLeft f (Left e) = Left $ f e

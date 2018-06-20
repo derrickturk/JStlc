@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes, TypeInType #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Compile (
     JS(..)
-  , NameCtxt(..)
   , compile
   , compile'
   , compileStmt
@@ -16,14 +16,11 @@ module Language.JStlc.Compile (
 import Prelude hiding (lookup)
 import qualified Data.Text as T
 
+import Data.Vect
+
 import Language.JStlc.Types
 import Language.JStlc.Syntax
 import Language.JStlc.JS
-
-data NameCtxt :: [Ty] -> * where
-  NameNil :: NameCtxt '[]
-  (:>) :: T.Text -> NameCtxt as -> NameCtxt (a ': as)
-infixr 5 :>
 
 lookup :: Ix as a -> NameCtxt as -> T.Text
 lookup IZ (x :> _) = x
@@ -58,8 +55,8 @@ jsFix = JSLambda "f"
                     [(JSLambda "y" (JSCall (JSCall (JSVar "x") [(JSVar "x")])
                                           [(JSVar "y")]))]))])
 
-compile :: Term '[] a -> JS
-compile = compile' NameNil
+compile :: Term 'VNil a -> JS
+compile = compile' VNil
 
 compile' :: NameCtxt as -> Term as a -> JS
 compile' c (Var i) = JSVar $ lookup i c
@@ -106,7 +103,7 @@ compileProg :: Prog as -> JSProg
 compileProg =  fst . compileProg'
 
 compileProg' :: Prog as -> (JSProg, NameCtxt as)
-compileProg' EmptyProg = ([], NameNil)
+compileProg' EmptyProg = ([], VNil)
 compileProg' (p :&: s) = let (jsP, c) = compileProg' p
                              (jsS, c') = compileStmt' c s in
                              (jsP ++ [jsS], c')

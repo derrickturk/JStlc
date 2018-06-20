@@ -41,7 +41,7 @@ data BinOp :: Ty -> Ty -> Type where
   Append :: BinOp ('ListTy a) ('ListTy a)
   Eq :: Eq (ValTy a) => BinOp a 'BoolTy
 
-data Term :: forall (n :: Nat) . Vect n Ty -> Ty -> Type where
+data Term :: forall (n :: Nat) . TyCtxt n -> Ty -> Type where
   Var :: Ix ts a -> Term ts a
   Lit :: (Show (ValTy a), ToJS (ValTy a)) => ValTy a -> Term ts a
   Lam :: T.Text -> STy a -> Term (a ':> ts) b -> Term ts ('FnTy a b)
@@ -71,12 +71,12 @@ data Term :: forall (n :: Nat) . Vect n Ty -> Ty -> Type where
           -> Term ts ('ListTy b)
 
 -- statements are indexed by their "before" and "after" type contexts
-data Stmt :: forall (n :: Nat) (m :: Nat) . Vect n Ty -> Vect m Ty -> Type where
+data Stmt :: forall (n :: Nat) (m :: Nat) . TyCtxt n -> TyCtxt m -> Type where
   Define :: T.Text -> Term as a -> Stmt as (a ':> as)
   DefineRec :: T.Text -> STy a -> Term (a ':> as) a -> Stmt as (a ':> as)
 
 -- TODO: :&: could require a proof of name uniqueness
-data Prog :: forall (n :: Nat) . Vect n Ty -> Type where
+data Prog :: forall (n :: Nat) . TyCtxt n -> Type where
   EmptyProg :: Prog 'VNil
   (:&:) :: Prog before -> Stmt before after -> Prog after
 infixr 5 :&:

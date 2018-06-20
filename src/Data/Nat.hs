@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, GADTs, KindSignatures #-}
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes, TypeInType #-}
 
 module Data.Nat (
@@ -13,6 +13,7 @@ import Data.Kind (Type)
 data Nat :: Type where
   Z :: Nat
   S :: Nat -> Nat
+  deriving (Show, Eq)
 
 data SNat :: Nat -> Type where
   SZ :: SNat 'Z
@@ -25,3 +26,11 @@ data Fin :: Nat -> Type where
 data SFin :: forall (n :: Nat) . Fin n -> Type where
   SFZ :: SFin 'FZ
   SFS :: SFin f -> SFin ('FS f)
+
+deriving instance Show (SNat n)
+deriving instance Show (Fin n)
+deriving instance Show (SFin f)
+
+deriving instance Eq (SNat n)
+deriving instance Eq (Fin n)
+deriving instance Eq (SFin f)

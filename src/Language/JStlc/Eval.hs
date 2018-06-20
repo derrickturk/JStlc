@@ -3,14 +3,12 @@
 {-# LANGUAGE RankNTypes, TypeInType #-}
 
 module Language.JStlc.Eval (
-    Ctxt
-  , eval
+    eval
   , eval'
   , evalStmt
   , evalProg
 ) where
 
-import Data.Kind (Type)
 import Prelude hiding (lookup)
 import Data.Monoid ((<>))
 
@@ -18,17 +16,6 @@ import Data.Vect
 
 import Language.JStlc.Types
 import Language.JStlc.Syntax
-
-class TyVect (as :: Vect n Ty) where
-  type ValTyVect as :: Vect n Type
-
-instance TyVect 'VNil where
-  type ValTyVect 'VNil = 'VNil
-
-instance TyVect (a ':> as) where
-  type ValTyVect (a ':> as) = ValTy a ':> ValTyVect as
-
-type Ctxt as = HVect (ValTyVect as)
 
 lookup :: Ix as a -> Ctxt as -> ValTy a
 lookup IZ (x ::> _) = x

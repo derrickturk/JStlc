@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
-{-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes, TypeInType #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Types (
@@ -11,16 +11,25 @@ module Language.JStlc.Types (
   , runExSTy
   , toExSTy
   , ValTy
+  , TyCtxt
+  , NameCtxt
+  , Ctxt
+  , ValTyVect
+  , STyVect
   , showVal
 ) where
 
-import qualified Data.Text as T
+import Data.Kind (Type)
 import Data.Type.Equality
 import Data.Monoid ((<>))
+import qualified Data.Text as T
+
+import Data.Nat
+import Data.Vect
 
 import Language.JStlc.Pretty.Class
 
-data Ty :: * where
+data Ty :: Type where
   IntTy :: Ty
   BoolTy :: Ty
   StringTy :: Ty
@@ -28,7 +37,7 @@ data Ty :: * where
   OptionTy :: Ty -> Ty
   ListTy :: Ty -> Ty
 
-data STy :: Ty -> * where
+data STy :: Ty -> Type where
   SIntTy :: STy 'IntTy 
   SBoolTy :: STy 'BoolTy 
   SStringTy :: STy 'StringTy 
@@ -89,6 +98,18 @@ type family ValTy (a :: Ty) = v | v -> a where
   ValTy ('FnTy a b) = ValTy a -> ValTy b
   ValTy ('OptionTy a) = Maybe (ValTy a)
   ValTy ('ListTy a) = [ValTy a]
+
+type TyCtxt (n :: Nat) = Vect n Ty
+type NameCtxt (as :: TyCtxt n) = Vect (VLength as) T.Text
+type Ctxt as = HVect (ValTyVect as)
+
+type family ValTyVect (as :: TyCtxt n) = (r :: Vect n Type) | r -> as where
+  ValTyVect 'VNil = 'VNil
+  ValTyVect (a ':> as) = ValTy a ':> ValTyVect as
+
+type family STyVect (as :: TyCtxt n) = (r :: Vect n Type) | r -> as where
+  STyVect 'VNil = 'VNil
+  STyVect (a ':> as) = STy a ':> STyVect as
 
 instance Show Ty where
   show IntTy = "IntTy"

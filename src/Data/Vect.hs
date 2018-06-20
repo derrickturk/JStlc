@@ -1,12 +1,15 @@
 {-# LANGUAGE DataKinds, GADTs, KindSignatures, TypeOperators #-}
+{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts, StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes, TypeInType #-}
-{-# LANGUAGE TypeFamilies, MultiParamTypeClasses #-}
 
 module Data.Vect (
     Vect(..)
   , vlookup
   , HVect(..)
   , hvlookup
+  , VLookupable(..)
+  , VLength
 ) where
 
 import Data.Kind (Type)
@@ -43,3 +46,22 @@ hvlookup :: forall (n :: Nat) (as :: Vect n Type) (f :: Fin n)
           . SFin f -> HVect as -> VLookup f as
 hvlookup SFZ (x ::> _) = x
 hvlookup (SFS f) (_ ::> xs) = hvlookup f xs
+
+-- TODO: there's got to be an easier way to "reflect" n
+type family VLength (as :: Vect n a) = (m :: Nat) where
+  VLength 'VNil = 'Z
+  VLength (_ ':> as) = 'S (VLength as)
+
+deriving instance Show a => Show (Vect n a)
+deriving instance Eq a => Eq (Vect n a)
+deriving instance Functor (Vect n)
+
+instance Show (HVect 'VNil) where
+  show HVNil = "HVNil"
+instance (Show a, Show (HVect as)) => Show (HVect (a ':> as)) where
+  show (x ::> xs) = show x ++ " ::> " ++ show xs
+
+instance Eq (HVect 'VNil) where
+  HVNil == HVNil = True
+instance (Eq a, Eq (HVect as)) => Eq (HVect (a ':> as)) where
+  (x ::> xs) == (y ::> ys) = x == y && xs == ys
