@@ -93,10 +93,14 @@ compile' c (MapOption f x) = let x' = compile' c x in
              x'
 compile' c (MapList f x) = JSMethod (compile' c x) "map" [(compile' c f)]
 
-compileStmt :: NameCtxt before -> Stmt before after -> JSStmt (VLength before) (VLength after)
+compileStmt :: NameCtxt before
+            -> Stmt before after
+            -> JSStmt (VLength before) (VLength after)
 compileStmt c s = fst $ compileStmt' c s
 
-compileStmt' :: NameCtxt before -> Stmt before after -> (JSStmt (VLength before) (VLength after), NameCtxt after)
+compileStmt' :: NameCtxt before
+             -> Stmt before after
+             -> (JSStmt (VLength before) (VLength after), NameCtxt after)
 compileStmt' c (Define f (Lam x _ body)) = 
   (JSFunDef f (x :> VNil) (compile' (x :> c) body), f :> c)
 compileStmt' c (Define x t) = (JSLet x (compile' c t), x :> c)
