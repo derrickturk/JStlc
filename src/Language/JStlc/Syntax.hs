@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts #-}
+{-# LANGUAGE RankNTypes, TypeInType #-}
 
 module Language.JStlc.Syntax (
     Ix(..)
@@ -9,21 +10,22 @@ module Language.JStlc.Syntax (
   , Prog(..)
 ) where
 
+import Data.Kind (Type)
 import qualified Data.Text as T
+
+import Data.Nat
+import Data.Vect
 
 import Language.JStlc.Types
 import Language.JStlc.JS
 
--- TODO: could be a lark to use a Vect for the type context
--- implementor's note: it was not, in fact, a lark
-
-data Ix :: [Ty] -> Ty -> * where
-  IZ :: Ix (a ': as) a
-  IS :: Ix as a -> Ix (b ': as) a
-
 -- TODO: unary ops (not, negate)
 
-data BinOp :: Ty -> Ty -> * where
+data Ix :: forall (n :: Nat) a . Vect n a -> a -> Type where
+  IZ :: Ix (a ':> as) a
+  IS :: Ix as a -> Ix (b ':> as) a
+
+data BinOp :: Ty -> Ty -> Type where
   Add :: BinOp 'IntTy 'IntTy
   Sub :: BinOp 'IntTy 'IntTy
   Mul :: BinOp 'IntTy 'IntTy
@@ -39,13 +41,17 @@ data BinOp :: Ty -> Ty -> * where
   Append :: BinOp ('ListTy a) ('ListTy a)
   Eq :: Eq (ValTy a) => BinOp a 'BoolTy
 
-data Term :: [Ty] -> Ty -> * where
+data Term :: forall (n :: Nat) . Vect n Ty -> Ty -> Type where
   Var :: Ix ts a -> Term ts a
   Lit :: (Show (ValTy a), ToJS (ValTy a)) => ValTy a -> Term ts a
-  Lam :: T.Text -> STy a -> Term (a ': ts) b -> Term ts ('FnTy a b)
+  Lam :: T.Text -> STy a -> Term (a ':> ts) b -> Term ts ('FnTy a b)
   App :: Term ts ('FnTy a b) -> Term ts a -> Term ts b
-  Let :: T.Text -> Term ts a -> Term (a ': ts) b -> Term ts b
-  LetRec :: T.Text -> STy a -> Term (a ': ts) a -> Term (a ': ts) b -> Term ts b
+  Let :: T.Text -> Term ts a -> Term (a ':> ts) b -> Term ts b
+  LetRec :: T.Text
+         -> STy a
+         -> Term (a ':> ts) a
+         -> Term (a ':> ts) b
+         -> Term ts b
   Fix :: Term ts ('FnTy a a) -> Term ts a
   None :: STy ('OptionTy a) -> Term ts ('OptionTy a)
   Some :: Term ts a -> Term ts ('OptionTy a)
@@ -65,13 +71,13 @@ data Term :: [Ty] -> Ty -> * where
           -> Term ts ('ListTy b)
 
 -- statements are indexed by their "before" and "after" type contexts
-data Stmt :: [Ty] -> [Ty] -> * where
-  Define :: T.Text -> Term as a -> Stmt as (a ': as)
-  DefineRec :: T.Text -> STy a -> Term (a ': as) a -> Stmt as (a ': as)
+data Stmt :: forall (n :: Nat) (m :: Nat) . Vect n Ty -> Vect m Ty -> Type where
+  Define :: T.Text -> Term as a -> Stmt as (a ':> as)
+  DefineRec :: T.Text -> STy a -> Term (a ':> as) a -> Stmt as (a ':> as)
 
 -- TODO: :&: could require a proof of name uniqueness
-data Prog :: [Ty] -> * where
-  EmptyProg :: Prog '[]
+data Prog :: forall (n :: Nat) . Vect n Ty -> Type where
+  EmptyProg :: Prog 'VNil
   (:&:) :: Prog before -> Stmt before after -> Prog after
 infixr 5 :&:
 

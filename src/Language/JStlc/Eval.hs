@@ -1,38 +1,48 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes, TypeInType #-}
 
 module Language.JStlc.Eval (
-    Ctxt(..)
+    Ctxt
   , eval
   , eval'
   , evalStmt
   , evalProg
 ) where
 
+import Data.Kind (Type)
 import Prelude hiding (lookup)
 import Data.Monoid ((<>))
+
+import Data.Vect
 
 import Language.JStlc.Types
 import Language.JStlc.Syntax
 
-data Ctxt :: [Ty] -> * where
-  CNil :: Ctxt '[]
-  (:>) :: ValTy a -> Ctxt as -> Ctxt (a ': as)
-infixr 5 :>
+class TyVect (as :: Vect n Ty) where
+  type ValTyVect as :: Vect n Type
+
+instance TyVect 'VNil where
+  type ValTyVect 'VNil = 'VNil
+
+instance TyVect (a ':> as) where
+  type ValTyVect (a ':> as) = ValTy a ':> ValTyVect as
+
+type Ctxt as = HVect (ValTyVect as)
 
 lookup :: Ix as a -> Ctxt as -> ValTy a
-lookup IZ (x :> _) = x
-lookup (IS i) (_ :> xs) = lookup i xs
+lookup IZ (x ::> _) = x
+lookup (IS i) (_ ::> xs) = lookup i xs
 
-eval :: Term '[] a -> ValTy a
-eval = eval' CNil
+eval :: Term 'VNil a -> ValTy a
+eval = eval' HVNil
 
 eval' :: Ctxt as -> Term as a -> ValTy a
 eval' c (Var i) = lookup i c
 eval' _ (Lit v) = v
-eval' c (Lam _ _ body) = \x -> eval' (x :> c) body
+eval' c (Lam _ _ body) = \x -> eval' (x ::> c) body
 eval' c (App f x) = eval' c f $ eval' c x
-eval' c (Let _ t u) = let x = eval' c t in eval' (x :> c) u
+eval' c (Let _ t u) = let x = eval' c t in eval' (x ::> c) u
 eval' c (LetRec x ty t u) = eval' c (Let x (Fix (Lam x ty t)) u)
 eval' c (Fix t) = eval' c t $ eval' c (Fix t)
 eval' _ (None _) = Nothing
@@ -62,9 +72,9 @@ evalBinOp Append x y = x <> y
 evalBinOp Eq x y = x == y
 
 evalStmt :: Ctxt as -> Stmt as bs -> Ctxt bs
-evalStmt c (Define _ t) = eval' c t :> c
-evalStmt c (DefineRec x ty t) = eval' c (Fix (Lam x ty t)) :> c
+evalStmt c (Define _ t) = eval' c t ::> c
+evalStmt c (DefineRec x ty t) = eval' c (Fix (Lam x ty t)) ::> c
 
 evalProg :: Prog as -> Ctxt as
-evalProg EmptyProg = CNil
+evalProg EmptyProg = HVNil
 evalProg (p :&: s) = evalStmt (evalProg p) s
