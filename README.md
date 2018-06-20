@@ -114,9 +114,13 @@ The provided operators don't allow for much beyond arithmetic on integers,
 and the output JS leaves a lot to be desired in terms of optimization and
 number of unnecessary parentheses.
 
-JStlc now uses type-level vectors to represent typing contexts, but it's
-still not able to re-use the same heterogeneous-vector type for singleton
-type contexts as for value contexts. This seems like it should be easier,
-using the existing type families.
+JStlc now uses type-level vectors to represent typing contexts, and implements
+an extremely minimal version of the "singletons" package which is used to
+generate type- and type-context- singletons. This finally unifies the "STyCtxt"
+data type with the rest of the world.
+
+Regards,
+Pierre Menard,
+Author of the Quixote
 
 #### (c) 2018 dwt | terminus data science, LLC
