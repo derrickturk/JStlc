@@ -93,7 +93,7 @@ check' n c (UVar x) = case varIx n c x of
     \sX i -> Right $ ExTerm (\k -> k sX (Var i))
   Nothing -> Left $ UndefinedVar x
 
-check' _ _ (ULit v) = Right $ ExTerm (\k -> k sTy (Lit v))
+check' _ _ (ULit v) = Right $ ExTerm (\k -> k sing (Lit v))
 
 check' n c (ULam x ty body) = do
   exBody <- check' (x :> n) (ty :-> c) body
@@ -108,8 +108,8 @@ check' n c (UApp f x) = do
       SFnTy sA sB -> runExTerm exX $
         \sX tX -> case testEquality sX sA of
           Just Refl -> Right $ ExTerm (\k -> k sB (App tF tX))
-          _ -> Left $ Mismatch (unSTy sA) (unSTy sX)
-      _ -> Left $ ExpectedFnType (unSTy sF)
+          _ -> Left $ Mismatch (unsing sA) (unsing sX)
+      _ -> Left $ ExpectedFnType (unsing sF)
 
 check' n c (ULet x t u) = do
   exT <- check' n c t
@@ -127,7 +127,7 @@ check' n c (ULetRec x ty t u) = do
           exU <- check' (x :> n) (ty :-> c) u
           runExTerm exU $
             \sU tU -> Right $ ExTerm (\k -> k sU (LetRec x ty tT tU))
-        _ -> Left $ Mismatch (unSTy ty) (unSTy sT)
+        _ -> Left $ Mismatch (unsing ty) (unsing sT)
 
 check' n c (UFix x) = do
   exX <- check' n c x
@@ -135,11 +135,11 @@ check' n c (UFix x) = do
     \s t -> case s of
       SFnTy sA sB -> case testEquality sA sB of
         Just Refl -> Right (ExTerm (\k -> k sA (Fix t)))
-        _ -> Left $ Mismatch (FnTy (unSTy sA) (unSTy sA)) (unSTy s)
-      _ -> Left $ ExpectedFnType (unSTy s)
+        _ -> Left $ Mismatch (FnTy (unsing sA) (unsing sA)) (unsing s)
+      _ -> Left $ ExpectedFnType (unsing s)
 
 check' _ _ (UNone ty@(SOptionTy _)) = Right $ ExTerm (\k -> k ty (None ty))
-check' _ _ (UNone ty) = Left $ ExpectedOptionType (unSTy ty)
+check' _ _ (UNone ty) = Left $ ExpectedOptionType (unsing ty)
 
 check' n c (USome x) = do
   exX <- check' n c x
@@ -147,7 +147,7 @@ check' n c (USome x) = do
     \s t -> Right (ExTerm (\k -> k (SOptionTy s) (Some t)))
 
 check' _ _ (UNil ty@(SListTy _)) = Right $ ExTerm (\k -> k ty (Nil ty))
-check' _ _ (UNil ty) = Left $ ExpectedListType (unSTy ty)
+check' _ _ (UNil ty) = Left $ ExpectedListType (unsing ty)
 
 check' n c (UCons x xs) = do
   exX <- check' n c x
@@ -157,8 +157,8 @@ check' n c (UCons x xs) = do
       \s2 t2 -> case s2 of
         SListTy s2' -> case testEquality s1 s2' of
           Just Refl -> Right $ ExTerm (\k -> k (SListTy s2') (Cons t1 t2))
-          _ -> Left $ Mismatch (unSTy s2') (unSTy s1)
-        _ -> Left $ ExpectedListType (unSTy s2)
+          _ -> Left $ Mismatch (unsing s2') (unsing s1)
+        _ -> Left $ ExpectedListType (unsing s2)
 
 check' n c (UBinOpApp op x y) = do
   exX <- check' n c x
@@ -170,8 +170,8 @@ check' n c (UBinOpApp op x y) = do
         Just Refl -> runExTerm exY $
           \s2 t2 -> case testEquality s2 aTy of
             Just Refl -> Right $ ExTerm (\k -> k resTy (BinOpApp op' t1 t2))
-            _ -> Left $ Mismatch (unSTy aTy) (unSTy s2)
-        _ -> Left $ Mismatch (unSTy aTy) (unSTy s1)
+            _ -> Left $ Mismatch (unsing aTy) (unsing s2)
+        _ -> Left $ Mismatch (unsing aTy) (unsing s1)
 
 check' n c (UIfThenElse b t f) = do
   exB <- check' n c b
@@ -183,8 +183,8 @@ check' n c (UIfThenElse b t f) = do
         \sT tT -> runExTerm exF $
           \sF tF -> case testEquality sT sF of
             Just Refl -> Right $ ExTerm (\k -> k sT (IfThenElse tB tT tF))
-            _ -> Left $ Mismatch (unSTy sT) (unSTy sF)
-      _ -> Left $ Mismatch BoolTy (unSTy sB)
+            _ -> Left $ Mismatch (unsing sT) (unsing sF)
+      _ -> Left $ Mismatch BoolTy (unsing sB)
 
 check' n c (UFoldL f x xs) = do
   exF <- check' n c f
@@ -200,12 +200,12 @@ check' n c (UFoldL f x xs) = do
                 \sXs tXs -> case sXs of
                   SListTy sElem -> case testEquality sElem sB of
                     Just Refl -> Right $ ExTerm (\k -> k sA (FoldL tF tX tXs)) 
-                    _ -> Left $ Mismatch (ListTy (unSTy sB)) (unSTy sXs)
-                  _ -> Left $ Mismatch (ListTy (unSTy sB)) (unSTy sXs)
-              _ -> Left $ Mismatch (unSTy sA) (unSTy sX)
-          _ -> Left $ Mismatch (FnTy (unSTy sB) (unSTy sA)) (unSTy sBA)
-        _ -> Left $ ExpectedFnType (unSTy sBA)
-      _ -> Left $ ExpectedFnType (unSTy sF)
+                    _ -> Left $ Mismatch (ListTy (unsing sB)) (unsing sXs)
+                  _ -> Left $ Mismatch (ListTy (unsing sB)) (unsing sXs)
+              _ -> Left $ Mismatch (unsing sA) (unsing sX)
+          _ -> Left $ Mismatch (FnTy (unsing sB) (unsing sA)) (unsing sBA)
+        _ -> Left $ ExpectedFnType (unsing sBA)
+      _ -> Left $ ExpectedFnType (unsing sF)
 
 check' n c (UMap f x) = do
   exF <- check' n c f
@@ -217,14 +217,14 @@ check' n c (UMap f x) = do
           SOptionTy sX' -> case testEquality sX' sA of
             Just Refl -> Right $
               ExTerm (\k -> k (SOptionTy sB) (MapOption tF tX)) 
-            _ -> Left $ Mismatch (OptionTy (unSTy sA)) (unSTy sX)
+            _ -> Left $ Mismatch (OptionTy (unsing sA)) (unsing sX)
           SListTy sX' -> case testEquality sX' sA of
             Just Refl -> Right $
               ExTerm (\k -> k (SListTy sB) (MapList tF tX)) 
-            _ -> Left $ Mismatch (ListTy (unSTy sA)) (unSTy sX)
+            _ -> Left $ Mismatch (ListTy (unsing sA)) (unsing sX)
           -- this is a bit arbitrary
-          _ -> Left $ ExpectedListType (unSTy sX)
-      _ -> Left $ ExpectedFnType (unSTy sF)
+          _ -> Left $ ExpectedListType (unsing sX)
+      _ -> Left $ ExpectedFnType (unsing sF)
 
 newtype ExIx ctxt =
   ExIx { runExIx :: forall r . (forall a . STy a -> Ix ctxt a -> r) -> r }
@@ -281,12 +281,12 @@ checkBinOp UGtEq _ _ = Right $ ExBinOp (\k -> k SIntTy SBoolTy GtEq)
 checkBinOp UStrCat _ _ = Right $ ExBinOp (\k -> k SStringTy SStringTy StrCat)
 checkBinOp UAppend exX _ = runExTerm exX $ \sX _ -> case sX of
   SListTy a -> Right $ ExBinOp (\k -> k (SListTy a) (SListTy a) Append)
-  _ -> Left $ ExpectedListType (unSTy sX)
+  _ -> Left $ ExpectedListType (unsing sX)
 checkBinOp UEq exX _ = runExTerm exX $
   \sX _ -> case testEqValTy sX of
     Just exEqX -> runExEqValTy exEqX $
       \s -> Right $ ExBinOp (\k -> k s SBoolTy Eq)
-    Nothing -> Left $ ExpectedEqType (unSTy sX)
+    Nothing -> Left $ ExpectedEqType (unsing sX)
 
 checkStmt :: forall (m :: Nat) (before :: TyCtxt m) (n :: Nat)
            . NameCtxt before
@@ -318,7 +318,7 @@ checkStmt' n c (UDefineTyped x ty t) = if defined x n
     runExTerm exT $ \s t' -> case testEquality s ty of
       Just Refl -> Right $
         ExNamedStmt (\k -> k (s :-> c) (x :> n) (Define x t'))
-      _ -> Left $ Mismatch (unSTy ty) (unSTy s)
+      _ -> Left $ Mismatch (unsing ty) (unsing s)
 
 checkStmt' n c (UDefineRec x ty t) = if defined x n
   then Left $ DuplicateDef x
@@ -327,7 +327,7 @@ checkStmt' n c (UDefineRec x ty t) = if defined x n
     runExTerm exT $ \s t' -> case testEquality s ty of
       Just Refl ->
         Right $ ExNamedStmt (\k -> k (s :-> c) (x :> n) (DefineRec x ty t'))
-      _ -> Left $ Mismatch (unSTy ty) (unSTy s)
+      _ -> Left $ Mismatch (unsing ty) (unsing s)
 
 checkProg :: UProg n -> Either TypeError ExProg
 checkProg p = checkProg' p >>= \exNP ->

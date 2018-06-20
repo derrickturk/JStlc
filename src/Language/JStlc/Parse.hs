@@ -29,6 +29,8 @@ import qualified Data.Set as S
 import qualified Data.List.NonEmpty as NE
 
 import Data.Nat
+import Data.Sing
+
 import Language.JStlc.Types
 import Language.JStlc.Unchecked
 
@@ -130,7 +132,7 @@ lambda = do
   (x, t) <- annotated ident
   lexeme "=>"
   body <- term
-  return $ runExSTy (toExSTy t) $ \s -> ULam x s body
+  return $ runExSing (toExSing t) $ \s -> ULam x s body
 
 letRec :: Parser (UTerm n)
 letRec = do
@@ -144,17 +146,17 @@ letRec = do
   "in"
   space1
   u <- term
-  return $ runExSTy (toExSTy typ) (\s -> ULetRec x s t u)
+  return $ runExSing (toExSing typ) (\s -> ULetRec x s t u)
 
 nonLRTerm :: Parser (UTerm n)
 nonLRTerm = 
       try (UVar <$> ident)
   <|> try lambda
-  <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNone s)
+  <|> try ((\(_, t) -> runExSing (toExSing t) $ \s -> UNone s)
         <$> annotated (lexeme "none"))
   <|> try (UFix <$> ("fix" *> space1 *> term))
   <|> try (USome <$> ("some" *> space1 *> term))
-  <|> try ((\(_, t) -> runExSTy (toExSTy t) $ \s -> UNil s)
+  <|> try ((\(_, t) -> runExSing (toExSing t) $ \s -> UNil s)
         <$> annotated (lexeme "nil"))
   <|> try (UIfThenElse <$> ("if" *> space1 *> term)
                        <*> ("then" *> space1 *> term)
@@ -216,7 +218,7 @@ defineRec = do
   lexeme "="
   t <- term
   lexeme ";"
-  return $ runExSTy (toExSTy typ) (\s -> UDefineRec x s t)
+  return $ runExSing (toExSing typ) (\s -> UDefineRec x s t)
 
 defineTyped :: Parser (UStmt n ('S n))
 defineTyped = do
@@ -224,7 +226,7 @@ defineTyped = do
   lexeme "="
   t <- term
   lexeme ";"
-  return $ runExSTy (toExSTy typ) (\s -> UDefineTyped x s t)
+  return $ runExSing (toExSing typ) (\s -> UDefineTyped x s t)
 
 stmt :: Parser (UStmt n ('S n))
 stmt =  try defineRec

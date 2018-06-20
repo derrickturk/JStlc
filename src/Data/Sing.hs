@@ -3,6 +3,9 @@
 
 module Data.Sing (
     Sing
+  , ISing(..)
+  , SingKind(..)
+  , ExSing(..)
   , SVect(..)
   , svlookup
 ) where
@@ -13,6 +16,17 @@ import Data.Nat
 import Data.Vect
 
 data family Sing (a :: k) :: Type
+
+class ISing (a :: k) where
+  sing :: Sing a
+
+class SingKind k where
+  type UnSing k = (r :: Type) | r -> k
+  unsing :: Sing (a :: k) -> UnSing k
+  toExSing :: UnSing k -> ExSing k
+
+newtype ExSing k =
+  ExSing { runExSing :: forall r . (forall (a :: k) . Sing a -> r) -> r }
 
 data SVect :: forall (n :: Nat) . Vect n k -> Type where
   SVNil :: SVect 'VNil

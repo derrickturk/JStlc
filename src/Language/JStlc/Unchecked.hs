@@ -12,6 +12,8 @@ module Language.JStlc.Unchecked (
 import qualified Data.Text as T
 
 import Data.Nat
+import Data.Sing
+
 import Language.JStlc.Types
 import Language.JStlc.JS
 
@@ -34,7 +36,7 @@ data UBinOp :: * where
 -- unchecked terms in a context of given depth
 data UTerm :: Nat -> * where
   UVar :: T.Text -> UTerm n
-  ULit :: (ISTy a, ToJS (ValTy a), Show (ValTy a)) => ValTy a -> UTerm n
+  ULit :: (ISing a, ToJS (ValTy a), Show (ValTy a)) => ValTy a -> UTerm n
   ULam :: T.Text -> STy a -> UTerm ('S n) -> UTerm n
   UApp :: UTerm n -> UTerm n -> UTerm n
   ULet :: T.Text -> UTerm n -> UTerm ('S n) -> UTerm n

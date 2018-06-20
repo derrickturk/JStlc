@@ -119,7 +119,7 @@ replStep (TypeTerm src) = Repl $ do
     runExTerm exT $ \s t -> liftIO $ do
       putStr (show t)
       putStr " : "
-      print (unSTy s)
+      print (unsing s)
 
 replStep (ParseTerm src) = Repl $ do
   ut <- runRepl $ replParseTerm src
@@ -146,7 +146,7 @@ replStep (InspectTerm src) = Repl $ do
     let (_, cNames) = compileProg' (program rs)
     runExTerm exT $ \s t -> liftIO $ do
       putStr "=check=> "
-      putStrLn $ show t ++ " : " ++ show (unSTy s)
+      putStrLn $ show t ++ " : " ++ show (unsing s)
       putStr "=eval=> "
       putStrLn $ showVal s (eval' (vals rs) t)
       let js = compile' cNames t

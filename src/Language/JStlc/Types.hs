@@ -7,11 +7,6 @@ module Language.JStlc.Types (
     Ty(..)
   , Sing(..)
   , STy
-  , ISTy(..)
-  , unSTy
-  , ExSTy
-  , runExSTy
-  , toExSTy
   , ValTy
   , TyCtxt
   , STyCtxt
@@ -50,39 +45,38 @@ data instance Sing (a :: Ty) where
 
 type STy (a :: Ty) = Sing a
 
-class ISTy a where
-  sTy :: STy a
-instance ISTy 'IntTy where
-  sTy = SIntTy
-instance ISTy 'BoolTy where
-  sTy = SBoolTy
-instance ISTy 'StringTy where
-  sTy = SStringTy
-instance (ISTy a, ISTy b) => ISTy ('FnTy a b) where
-  sTy = SFnTy sTy sTy
-instance ISTy a => ISTy ('OptionTy a) where
-  sTy = SOptionTy sTy
-instance ISTy a => ISTy ('ListTy a) where
-  sTy = SListTy sTy
+instance ISing 'IntTy where
+  sing = SIntTy
+instance ISing 'BoolTy where
+  sing = SBoolTy
+instance ISing 'StringTy where
+  sing = SStringTy
+instance (ISing a, ISing b) => ISing ('FnTy a b) where
+  sing = SFnTy sing sing
+instance ISing a => ISing ('OptionTy a) where
+  sing = SOptionTy sing
+instance ISing a => ISing ('ListTy a) where
+  sing = SListTy sing
 
-unSTy :: STy a -> Ty
-unSTy SIntTy = IntTy
-unSTy SBoolTy = BoolTy
-unSTy SStringTy = StringTy
-unSTy (SFnTy a b) = FnTy (unSTy a) (unSTy b)
-unSTy (SOptionTy a) = OptionTy (unSTy a)
-unSTy (SListTy a) = ListTy (unSTy a)
+instance SingKind Ty where
+  type UnSing Ty = Ty
 
-newtype ExSTy = ExSTy { runExSTy :: forall r . (forall a . STy a -> r) -> r }
+  unsing SIntTy = IntTy
+  unsing SBoolTy = BoolTy
+  unsing SStringTy = StringTy
+  unsing (SFnTy a b) = FnTy (unsing a) (unsing b)
+  unsing (SOptionTy a) = OptionTy (unsing a)
+  unsing (SListTy a) = ListTy (unsing a)
 
-toExSTy :: Ty -> ExSTy
-toExSTy IntTy = ExSTy ($ SIntTy)
-toExSTy BoolTy = ExSTy ($ SBoolTy)
-toExSTy StringTy = ExSTy ($ SStringTy)
-toExSTy (FnTy a b) = runExSTy (toExSTy a) $ \sA ->
-  runExSTy (toExSTy b) $ \sB -> ExSTy ($ (SFnTy sA sB))
-toExSTy (OptionTy a) = runExSTy (toExSTy a) $ \sA -> ExSTy ($ (SOptionTy sA))
-toExSTy (ListTy a) = runExSTy (toExSTy a) $ \sA -> ExSTy ($ (SListTy sA))
+  toExSing IntTy = ExSing ($ SIntTy)
+  toExSing BoolTy = ExSing ($ SBoolTy)
+  toExSing StringTy = ExSing ($ SStringTy)
+  toExSing (FnTy a b) = runExSing (toExSing a) $ \sA ->
+    runExSing (toExSing b) $ \sB -> ExSing ($ (SFnTy sA sB))
+  toExSing (OptionTy a) = runExSing (toExSing a) $ \sA ->
+    ExSing ($ (SOptionTy sA))
+  toExSing (ListTy a) = runExSing (toExSing a) $ \sA ->
+    ExSing ($ (SListTy sA))
 
 -- P R A I S E  T H E  C  U  S  K
 instance TestEquality (Sing :: Ty -> Type) where
@@ -152,4 +146,4 @@ instance Pretty Ty where
   pretty (ListTy a) = T.cons '[' $ T.snoc (pretty a) ']'
 
 instance Pretty (STy a) where
-  pretty = pretty . unSTy
+  pretty = pretty . unsing
