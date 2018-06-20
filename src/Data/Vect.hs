@@ -8,7 +8,7 @@ module Data.Vect (
   , vlookup
   , HVect(..)
   , hvlookup
-  , VLookupable(..)
+  , VLookup
   , VLength
 ) where
 
@@ -31,21 +31,14 @@ data HVect :: forall (n :: Nat) . Vect n Type -> Type where
   (::>) :: a -> HVect as -> HVect (a ':> as)
 infixr 5 ::>
 
--- not sure why I couldn't get away with an ordinary type family here
-
-class VLookupable (f :: Fin n) (as :: Vect n Type) where
-  type VLookup f as
-
-instance VLookupable 'FZ (a ':> as) where
-  type VLookup 'FZ (a ':> as) = a
-
-instance VLookupable f as => VLookupable ('FS f) (a ':> as) where
-  type VLookup ('FS f) (a ':> as) = VLookup f as
-
 hvlookup :: forall (n :: Nat) (as :: Vect n Type) (f :: Fin n)
           . SFin f -> HVect as -> VLookup f as
 hvlookup SFZ (x ::> _) = x
 hvlookup (SFS f) (_ ::> xs) = hvlookup f xs
+
+type family VLookup (f :: Fin n) (as :: Vect n k) = (r :: k) where
+  VLookup 'FZ (a ':> _) = a
+  VLookup ('FS f) (_ ':> as) = VLookup f as
 
 -- TODO: there's got to be an easier way to "reflect" n
 type family VLength (as :: Vect n a) = (m :: Nat) where
