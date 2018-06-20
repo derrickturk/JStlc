@@ -119,8 +119,8 @@ an extremely minimal version of the "singletons" package which is used to
 generate type- and type-context- singletons. This finally unifies the "STyCtxt"
 data type with the rest of the world.
 
-Regards,
-Pierre Menard,
+Regards,  
+Pierre Menard,  
 Author of the Quixote
 
 #### (c) 2018 dwt | terminus data science, LLC
