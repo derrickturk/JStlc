@@ -100,7 +100,7 @@ type family ValTy (a :: Ty) = v | v -> a where
   ValTy ('ListTy a) = [ValTy a]
 
 type TyCtxt (n :: Nat) = Vect n Ty
-type STyCtxt (as :: TyCtxt n) = SVect as
+type STyCtxt (as :: TyCtxt n) = Sing as
 type NameCtxt (as :: TyCtxt n) = Vect (VLength as) T.Text
 type Ctxt as = HVect (ValTyVect as)
 
