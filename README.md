@@ -114,10 +114,9 @@ The provided operators don't allow for much beyond arithmetic on integers,
 and the output JS leaves a lot to be desired in terms of optimization and
 number of unnecessary parentheses.
 
-It'd also be nice to use type-level vectors instead of lists to represent
-the typing contexts; this would provide even more static checking to ensure
-that the typing contexts and naming contexts stay "in sync" during the
-typechecking phase. See the stitch paper above for a nice implementation of
-these ideas.
+JStlc now uses type-level vectors to represent typing contexts, but it's
+still not able to re-use the same heterogeneous-vector type for singleton
+type contexts as for value contexts. This seems like it should be easier,
+using the existing type families.
 
 #### (c) 2018 dwt | terminus data science, LLC
