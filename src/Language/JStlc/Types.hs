@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators, FlexibleContexts, RankNTypes, TypeInType #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.JStlc.Types (
@@ -116,13 +116,13 @@ instance Show Ty where
   show (OptionTy a) = "OptionTy (" ++ show a ++ ")"
   show (ListTy a) = "ListTy (" ++ show a ++ ")"
 
-instance Show (STy a) where
-  show SIntTy = "SIntTy"
-  show SBoolTy = "SBoolTy"
-  show SStringTy = "SStringTy"
-  show (SFnTy a b) = "SFnTy (" ++ show a ++ ") (" ++ show b ++ ")"
-  show (SOptionTy a) = "SOptionTy (" ++ show a ++ ")"
-  show (SListTy a) = "SListTy (" ++ show a ++ ")"
+instance ShowSing Ty where
+  showSing SIntTy = "SIntTy"
+  showSing SBoolTy = "SBoolTy"
+  showSing SStringTy = "SStringTy"
+  showSing (SFnTy a b) = "SFnTy (" ++ showSing a ++ ") (" ++ showSing b ++ ")"
+  showSing (SOptionTy a) = "SOptionTy (" ++ showSing a ++ ")"
+  showSing (SListTy a) = "SListTy (" ++ showSing a ++ ")"
 
 -- used to "render" value types e.g. in REPL, where possible
 showVal :: STy a -> ValTy a -> String

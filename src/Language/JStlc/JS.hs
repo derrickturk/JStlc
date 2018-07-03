@@ -15,7 +15,7 @@ import Data.Foldable (toList)
 import qualified Data.Text as T
 
 import Data.Nat
-import Data.Vect
+import Data.Vect hiding (toList)
 
 data JS :: Nat -> * where
   JSBool :: Bool -> JS n
