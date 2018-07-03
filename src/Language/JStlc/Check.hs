@@ -44,6 +44,7 @@ data TypeError :: Type where
   ExpectedOptionType :: Ty -> TypeError
   ExpectedListType :: Ty -> TypeError
   ExpectedEqType :: Ty -> TypeError
+  ExpectedBoxedType :: Ty -> TypeError
   DuplicateDef :: T.Text -> TypeError
 
 -- this MUST be a newtype, because -XImpredicativeTypes blows up on
@@ -119,22 +120,26 @@ check' n c (ULet x t u) = do
       runExTerm exU $
         \sU tU -> Right $ ExTerm (\k -> k sU (Let x tT tU))
 
-check' n c (ULetRec x ty t u) = do
-  exT <- check' (x :> n) (ty :-> c) t
-  runExTerm exT $
-    \sT tT -> case testEquality ty sT of
-        Just Refl -> do
-          exU <- check' (x :> n) (ty :-> c) u
-          runExTerm exU $
-            \sU tU -> Right $ ExTerm (\k -> k sU (LetRec x ty tT tU))
-        _ -> Left $ Mismatch (unsing ty) (unsing sT)
+check' n c (ULetRec x ty t u)
+  | UnBoxed <- tyRep (unsing ty) = Left $ ExpectedBoxedType (unsing ty)
+  | otherwise = do
+      exT <- check' (x :> n) (ty :-> c) t
+      runExTerm exT $
+        \sT tT -> case testEquality ty sT of
+            Just Refl -> do
+              exU <- check' (x :> n) (ty :-> c) u
+              runExTerm exU $
+                \sU tU -> Right $ ExTerm (\k -> k sU (LetRec x ty tT tU))
+            _ -> Left $ Mismatch (unsing ty) (unsing sT)
 
 check' n c (UFix x) = do
   exX <- check' n c x
   runExTerm exX $
     \s t -> case s of
       SFnTy sA sB -> case testEquality sA sB of
-        Just Refl -> Right (ExTerm (\k -> k sA (Fix t)))
+        Just Refl -> case sA of
+          SFnTy _ _ -> Right (ExTerm (\k -> k sA (Fix t)))
+          _ -> Left $ ExpectedFnType (unsing sA)
         _ -> Left $ Mismatch (FnTy (unsing sA) (unsing sA)) (unsing s)
       _ -> Left $ ExpectedFnType (unsing s)
 
@@ -320,14 +325,15 @@ checkStmt' n c (UDefineTyped x ty t) = if defined x n
         ExNamedStmt (\k -> k (s :-> c) (x :> n) (Define x t'))
       _ -> Left $ Mismatch (unsing ty) (unsing s)
 
-checkStmt' n c (UDefineRec x ty t) = if defined x n
-  then Left $ DuplicateDef x
-  else do
-    exT <- check' (x :> n) (ty :-> c) t
-    runExTerm exT $ \s t' -> case testEquality s ty of
-      Just Refl ->
-        Right $ ExNamedStmt (\k -> k (s :-> c) (x :> n) (DefineRec x ty t'))
-      _ -> Left $ Mismatch (unsing ty) (unsing s)
+checkStmt' n c (UDefineRec x ty t)
+  | defined x n = Left $ DuplicateDef x
+  | UnBoxed <- tyRep (unsing ty) = Left $ ExpectedBoxedType (unsing ty)
+  | otherwise = do
+      exT <- check' (x :> n) (ty :-> c) t
+      runExTerm exT $ \s t' -> case testEquality s ty of
+        Just Refl ->
+          Right $ ExNamedStmt (\k -> k (s :-> c) (x :> n) (DefineRec x ty t'))
+        _ -> Left $ Mismatch (unsing ty) (unsing s)
 
 checkProg :: UProg n -> Either TypeError ExProg
 checkProg p = checkProg' p >>= \exNP ->
@@ -349,6 +355,7 @@ instance Show TypeError where
   show (ExpectedOptionType ty) = "ExpectedOptionType (" ++ show ty ++ ")"
   show (ExpectedListType ty) = "ExpectedListType (" ++ show ty ++ ")"
   show (ExpectedEqType ty) = "ExpectedEqType (" ++ show ty ++ ")"
+  show (ExpectedBoxedType ty) = "ExpectedBoxedType (" ++ show ty ++ ")"
   show (DuplicateDef x) = "DuplicateDef " ++ show x
 
 instance Show (ExTerm ctxt) where
@@ -372,4 +379,6 @@ instance Pretty TypeError where
     "Type error: expected list type; found " <> pretty found
   pretty (ExpectedEqType found) =
     "Type error: expected equality-supporting type; found " <> pretty found
+  pretty (ExpectedBoxedType found) =
+    "Type error: expected boxed type; found " <> pretty found
   pretty (DuplicateDef x) = "Multiple defintions for " <> x

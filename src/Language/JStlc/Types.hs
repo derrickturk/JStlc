@@ -5,6 +5,8 @@
 
 module Language.JStlc.Types (
     Ty(..)
+  , TyRep(..)
+  , tyRep
   , Sing(..)
   , STy
   , ValTy
@@ -34,6 +36,25 @@ data Ty :: Type where
   FnTy :: Ty -> Ty -> Ty
   OptionTy :: Ty -> Ty
   ListTy :: Ty -> Ty
+
+data TyRep :: Type where
+  Boxed :: TyRep
+  UnBoxed :: TyRep
+  deriving Show
+
+{- TODO: figure out how to lift this to the type level
+ - i.e. Ty :: TyRep -> Type
+ - without breaking TyCtxts everywhere
+ - (oh god, more existentials)
+ -}
+
+tyRep :: Ty -> TyRep
+tyRep IntTy = UnBoxed
+tyRep BoolTy = UnBoxed
+tyRep StringTy = UnBoxed
+tyRep (FnTy _ _) = Boxed
+tyRep (OptionTy a) = tyRep a
+tyRep (ListTy _) = Boxed
 
 data instance Sing (a :: Ty) where
   SIntTy :: Sing 'IntTy 
