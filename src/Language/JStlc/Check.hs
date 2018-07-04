@@ -231,6 +231,20 @@ check' n c (UMap f x) = do
           _ -> Left $ ExpectedListType (unsing sX)
       _ -> Left $ ExpectedFnType (unsing sF)
 
+check' n c (UHead xs) = do
+  exXs <- check' n c xs
+  runExTerm exXs $
+    \sXs tXs -> case sXs of
+      SListTy sA -> Right $ ExTerm (\k -> k (SOptionTy sA) (Head tXs))
+      _ -> Left $ ExpectedListType (unsing sXs)
+
+check' n c (UTail xs) = do
+  exXs <- check' n c xs
+  runExTerm exXs $
+    \sXs tXs -> case sXs of
+      SListTy sA -> Right $ ExTerm (\k -> k (SOptionTy (SListTy sA)) (Tail tXs))
+      _ -> Left $ ExpectedListType (unsing sXs)
+
 newtype ExIx ctxt =
   ExIx { runExIx :: forall r . (forall a . STy a -> Ix ctxt a -> r) -> r }
 

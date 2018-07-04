@@ -92,6 +92,14 @@ compile' c (MapOption f x) = let x' = compile' c x in
              (JSCall (compile' c f) [x'])
              x'
 compile' c (MapList f x) = JSMethod (compile' c x) "map" [(compile' c f)]
+compile' c (Head xs) = JSCondExpr
+  (JSBinOpApp "===" (JSProperty (compile' c xs) "length") (JSInteger 0))
+  (JSBuiltIn "null")
+  (JSIndex (compile' c xs) (JSInteger 0))
+compile' c (Tail xs) = JSCondExpr
+  (JSBinOpApp "===" (JSProperty (compile' c xs) "length") (JSInteger 0))
+  (JSBuiltIn "null")
+  (JSMethod (compile' c xs) "slice" [JSInteger 1])
 
 compileStmt :: NameCtxt before
             -> Stmt before after

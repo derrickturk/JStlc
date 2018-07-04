@@ -74,6 +74,8 @@ keywords = [ "if"
            , "fix"
            , "rec"
            , "map"
+           , "head"
+           , "tail"
            , "foldl"
            ]
 
@@ -156,6 +158,8 @@ nonLRTerm =
         <$> annotated (lexeme "none"))
   <|> try (UFix <$> ("fix" *> space1 *> term))
   <|> try (USome <$> ("some" *> space1 *> term))
+  <|> try (UHead <$> ("head" *> space1 *> term))
+  <|> try (UTail <$> ("tail" *> space1 *> term))
   <|> try ((\(_, t) -> runExSing (toExSing t) $ \s -> UNil s)
         <$> annotated (lexeme "nil"))
   <|> try (UIfThenElse <$> ("if" *> space1 *> term)

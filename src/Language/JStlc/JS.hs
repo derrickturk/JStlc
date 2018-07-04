@@ -20,6 +20,7 @@ import Data.Vect hiding (toList)
 data JS :: Nat -> * where
   JSBool :: Bool -> JS n
   JSNumber :: Double -> JS n
+  JSInteger :: Integer -> JS n
   JSString :: T.Text -> JS n
   JSBuiltIn :: T.Text -> JS n
   JSVar :: Fin n -> T.Text -> JS n
@@ -27,9 +28,11 @@ data JS :: Nat -> * where
   JSLambda :: T.Text -> JS ('S n) -> JS n
   JSCall :: JS n -> [JS n] -> JS n
   JSMethod :: JS n -> T.Text -> [JS n] -> JS n
+  JSProperty :: JS n -> T.Text -> JS n
   JSCondExpr :: JS n -> JS n -> JS n -> JS n
   JSUnOpApp :: T.Text -> JS n -> JS n
   JSBinOpApp :: T.Text -> JS n -> JS n -> JS n
+  JSIndex :: JS n -> JS n -> JS n
   deriving Show
 
 data JSStmt :: Nat -> Nat -> * where
@@ -51,7 +54,7 @@ instance ToJS Bool where
   toJS = JSBool
 
 instance ToJS Integer where
-  toJS = JSNumber . fromIntegral
+  toJS = JSInteger
 
 instance ToJS T.Text where
   toJS = JSString . escape where
@@ -71,6 +74,7 @@ instance Emit (JS n) where
   emit (JSBool True) = "true"
   emit (JSBool False) = "false"
   emit (JSNumber x) = T.pack $ show x
+  emit (JSInteger x) = T.pack $ show x
   emit (JSString s) = T.cons '\"' $ T.snoc s '\"'
   emit (JSBuiltIn x) = x
   emit (JSVar _ x) = x
@@ -83,10 +87,12 @@ instance Emit (JS n) where
   emit (JSMethod obj func args) =
     "(" <> emit obj <> ")."<> func <> "("
     <> T.intercalate ", " (fmap emit args) <> ")"
+  emit (JSProperty obj prop) = "(" <> emit obj <> ")."<> prop
   emit (JSCondExpr cond t f) =
     "(" <> emit cond <> ") ? (" <> emit t <> ") : (" <> emit f <> ")"
   emit (JSUnOpApp op x) = op <> "(" <> emit x <> ")"
   emit (JSBinOpApp op x y) = "(" <> emit x <> ") " <> op <> " (" <> emit y <> ")"
+  emit (JSIndex x i) = "(" <> emit x <> ")[" <> emit i <> "]"
 
 instance Emit (JSStmt n m) where
   emit (JSLet x t) = "var " <> x <> " = " <> emit t <> ";\n"

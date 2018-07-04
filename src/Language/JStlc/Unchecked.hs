@@ -50,6 +50,8 @@ data UTerm :: Nat -> * where
   UIfThenElse :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UFoldL :: UTerm n -> UTerm n -> UTerm n -> UTerm n
   UMap :: UTerm n -> UTerm n -> UTerm n
+  UHead :: UTerm n -> UTerm n
+  UTail :: UTerm n -> UTerm n
 
 data UStmt :: Nat -> Nat -> * where
   UDefine :: T.Text -> UTerm n -> UStmt n ('S n)
@@ -103,6 +105,8 @@ instance Show (UTerm n) where
   show (UFoldL f x xs) =
     "UFoldL (" ++ show f ++ ") (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (UMap f x) = "UMap (" ++ show f ++ ") (" ++ show x ++ ")"
+  show (UHead xs) = "UHead (" ++ show xs ++ ")"
+  show (UTail xs) = "UTail (" ++ show xs ++ ")"
 
 instance Show (UStmt n m) where
   show (UDefine x t) = "UDefine " ++ show x ++ " (" ++ show t ++ ")"

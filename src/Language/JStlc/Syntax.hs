@@ -74,6 +74,8 @@ data Term :: forall (n :: Nat) . TyCtxt n -> Ty -> Type where
   MapList :: Term ts ('FnTy a b)
           -> Term ts ('ListTy a)
           -> Term ts ('ListTy b)
+  Head :: Term ts ('ListTy a) -> Term ts ('OptionTy a)
+  Tail :: Term ts ('ListTy a) -> Term ts ('OptionTy ('ListTy a))
 
 -- statements are indexed by their "before" and "after" type contexts
 data Stmt :: forall (n :: Nat) (m :: Nat) . TyCtxt n -> TyCtxt m -> Type where
@@ -132,6 +134,8 @@ instance Show (Term as a) where
     "FoldL (" ++ show f ++ ") (" ++ show x ++ ") (" ++ show xs ++ ")"
   show (MapOption f x) = "MapOption (" ++ show f ++ ") (" ++ show x ++ ")"
   show (MapList f x) = "MapList (" ++ show f ++ ") (" ++ show x ++ ")"
+  show (Head xs) = "Head (" ++ show xs ++ ")"
+  show (Tail xs) = "Tail (" ++ show xs ++ ")"
 
 instance Show (Stmt before after) where
   show (Define x t) = "Define " ++ show x ++ " (" ++ show t ++ ")"

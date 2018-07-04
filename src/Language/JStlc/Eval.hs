@@ -41,6 +41,12 @@ eval' c (IfThenElse cond t f) = if eval' c cond then eval' c t else eval' c f
 eval' c (FoldL f x xs) = foldl (eval' c f) (eval' c x) (eval' c xs)
 eval' c (MapOption f x) = fmap (eval' c f) (eval' c x)
 eval' c (MapList f x) = fmap (eval' c f) (eval' c x)
+eval' c (Head xs) = case eval' c xs of
+  [] -> Nothing
+  x:_ -> Just x
+eval' c (Tail xs) = case eval' c xs of
+  [] -> Nothing
+  (_:ys) -> Just ys
 
 evalBinOp :: BinOp a b -> ValTy a -> ValTy a -> ValTy b
 evalBinOp Add x y = x + y
