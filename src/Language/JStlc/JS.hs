@@ -49,8 +49,10 @@ data JSStmt :: Nat -> Nat -> * where
               -> JSProg k
               -> JS ('S (n :+: k :+: m))
               -> JSStmt n ('S n)
+  {- TODO: where was I going with these?
   JSAssign :: JS n -> JS n -> JSStmt n n
   JSForLoop :: T.Text -> JS n -> JS n -> [JS ('S n)] -> JSStmt n n
+  -}
 
 data JSProg :: Nat -> * where
   JSEmptyProg :: JSProg 'Z
@@ -59,6 +61,9 @@ infixr 5 :&&:
 
 class ToJS a where
   toJS :: a -> JS n
+
+instance ToJS () where
+  toJS () = JSBuiltIn "null"
 
 instance ToJS Bool where
   toJS = JSBool

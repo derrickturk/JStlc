@@ -271,6 +271,7 @@ newtype ExEqValTy =
 
 -- TODO: figure out how to generalize this to other "polymorphic" constraints
 testEqValTy :: STy a -> Maybe ExEqValTy
+testEqValTy SUnitTy = Just $ ExEqValTy ($ SUnitTy)
 testEqValTy SIntTy = Just $ ExEqValTy ($ SIntTy)
 testEqValTy SBoolTy = Just $ ExEqValTy ($ SBoolTy)
 testEqValTy SStringTy = Just $ ExEqValTy ($ SStringTy)

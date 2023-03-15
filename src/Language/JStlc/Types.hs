@@ -30,6 +30,7 @@ import Data.Sing
 import Language.JStlc.Pretty.Class
 
 data Ty :: Type where
+  UnitTy :: Ty
   IntTy :: Ty
   BoolTy :: Ty
   StringTy :: Ty
@@ -49,6 +50,7 @@ data TyRep :: Type where
  -}
 
 tyRep :: Ty -> TyRep
+tyRep UnitTy = UnBoxed
 tyRep IntTy = UnBoxed
 tyRep BoolTy = UnBoxed
 tyRep StringTy = UnBoxed
@@ -57,6 +59,7 @@ tyRep (OptionTy a) = tyRep a
 tyRep (ListTy _) = Boxed
 
 data instance Sing (a :: Ty) where
+  SUnitTy :: Sing 'UnitTy
   SIntTy :: Sing 'IntTy 
   SBoolTy :: Sing 'BoolTy 
   SStringTy :: Sing 'StringTy 
@@ -66,6 +69,8 @@ data instance Sing (a :: Ty) where
 
 type STy (a :: Ty) = Sing a
 
+instance ISing 'UnitTy where
+  sing = SUnitTy
 instance ISing 'IntTy where
   sing = SIntTy
 instance ISing 'BoolTy where
@@ -82,6 +87,7 @@ instance ISing a => ISing ('ListTy a) where
 instance SingKind Ty where
   type UnSing Ty = Ty
 
+  unsing SUnitTy = UnitTy
   unsing SIntTy = IntTy
   unsing SBoolTy = BoolTy
   unsing SStringTy = StringTy
@@ -89,6 +95,7 @@ instance SingKind Ty where
   unsing (SOptionTy a) = OptionTy (unsing a)
   unsing (SListTy a) = ListTy (unsing a)
 
+  toExSing UnitTy = ExSing ($ SUnitTy)
   toExSing IntTy = ExSing ($ SIntTy)
   toExSing BoolTy = ExSing ($ SBoolTy)
   toExSing StringTy = ExSing ($ SStringTy)
@@ -101,6 +108,7 @@ instance SingKind Ty where
 
 -- P R A I S E  T H E  C  U  S  K
 instance TestEquality (Sing :: Ty -> Type) where
+  testEquality SUnitTy SUnitTy = Just Refl
   testEquality SIntTy SIntTy = Just Refl
   testEquality SBoolTy SBoolTy = Just Refl
   testEquality SStringTy SStringTy = Just Refl
@@ -113,6 +121,7 @@ instance TestEquality (Sing :: Ty -> Type) where
   testEquality _ _ = Nothing
 
 type family ValTy (a :: Ty) = v | v -> a where
+  ValTy 'UnitTy = ()
   ValTy 'IntTy = Integer
   ValTy 'BoolTy = Bool
   ValTy 'StringTy = T.Text
@@ -130,6 +139,7 @@ type family ValTyVect (as :: TyCtxt n) = (r :: Vect n Type) | r -> as where
   ValTyVect (a ':> as) = ValTy a ':> ValTyVect as
 
 instance Show Ty where
+  show UnitTy = "UnitTy"
   show IntTy = "IntTy"
   show BoolTy = "BoolTy"
   show StringTy = "StringTy"
@@ -138,6 +148,7 @@ instance Show Ty where
   show (ListTy a) = "ListTy (" ++ show a ++ ")"
 
 instance ShowSing Ty where
+  showSing SUnitTy = "SUnitTy"
   showSing SIntTy = "SIntTy"
   showSing SBoolTy = "SBoolTy"
   showSing SStringTy = "SStringTy"
@@ -147,6 +158,7 @@ instance ShowSing Ty where
 
 -- used to "render" value types e.g. in REPL, where possible
 showVal :: STy a -> ValTy a -> String
+showVal SUnitTy u = show u
 showVal SIntTy n = show n
 showVal SBoolTy b = show b
 showVal SStringTy s = show s
@@ -159,6 +171,7 @@ showVal (SListTy a) (x:xs) = "[" ++ showVal a x ++ go a xs ++ "]" where
   go t (y:ys) = ", " ++ showVal t y ++ go t ys
 
 instance Pretty Ty where
+  pretty UnitTy = "Unit"
   pretty IntTy = "Int"
   pretty BoolTy = "Bool"
   pretty StringTy = "String"

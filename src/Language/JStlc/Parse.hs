@@ -49,6 +49,9 @@ comma = symbol ","
 enclosed :: T.Text -> T.Text -> Parser a -> Parser a
 enclosed left right = between (symbol left) (symbol right)
 
+unit :: Parser ()
+unit = lexeme $ () <$ "()"
+
 integer :: Parser Integer
 integer = lexeme $
       try $ enclosed "(" ")" (lexeme $ L.signed space L.decimal)
@@ -97,7 +100,8 @@ ty =  try (binOpRec FnTy baseTy (lexeme "->" *> ty))
 
 baseTy :: Parser Ty
 baseTy = lexeme $
-      IntTy <$ "Int"
+      UnitTy <$ "Unit"
+  <|> IntTy <$ "Int"
   <|> BoolTy <$ "Bool"
   <|> StringTy <$ "String"
   <|> ListTy <$> enclosed "[" "]" ty
@@ -117,14 +121,16 @@ annotated p = do
 
 litList :: Parser (UTerm n)
 litList =  enclosed "[" "]" $
-      try (ULit <$> sepBy1 integer comma)
-  <|> try (ULit <$> sepBy1 qString comma)
-  <|> (ULit <$> sepBy1 bool comma)
+      try (ULit <$> sepBy1 qString comma)
+  <|> try (ULit <$> sepBy1 integer comma)
+  <|> try (ULit <$> sepBy1 bool comma)
+  <|> (ULit <$> sepBy1 unit comma)
 
 lit :: Parser (UTerm n)
 lit =  try (ULit <$> qString)
    <|> try (ULit <$> integer)
    <|> try (ULit <$> bool)
+   <|> try (ULit <$> unit)
    <|> litList
    -- TODO literal lists
 
