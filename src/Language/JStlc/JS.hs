@@ -113,7 +113,7 @@ instance Emit (JSStmt n m) where
   emit (JSLet x t) = "var " <> x <> " = " <> emit t <> ";\n"
   emit (JSFunDef f args prog body) =
     "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n"
-    <> emit prog <> "\n\treturn "
+    <> emit prog <> "\treturn "
     <> emit body <> ";\n}\n"
   emit (JSFunDefRec f args prog body) =
     "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n"
