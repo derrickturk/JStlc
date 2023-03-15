@@ -37,10 +37,20 @@ data JS :: Nat -> * where
 
 data JSStmt :: Nat -> Nat -> * where
   JSLet :: T.Text -> JS n -> JSStmt n ('S n)
-  JSFunDef :: T.Text -> Vect m T.Text -> JS (n :+: m) -> JSStmt n ('S n)
+  JSFunDef :: T.Text
+           -> Vect m T.Text
+           -> JSProg k
+           -> JS (n :+: k :+: m)
+           -> JSStmt n ('S n)
   -- TODO: find a way to unify this with JSFunDef
   -- (likely by shifting... somewhere)
-  JSFunDefRec :: T.Text -> Vect m T.Text -> JS ('S (n :+: m)) -> JSStmt n ('S n)
+  JSFunDefRec :: T.Text
+              -> Vect m T.Text
+              -> JSProg k
+              -> JS ('S (n :+: k :+: m))
+              -> JSStmt n ('S n)
+  JSAssign :: JS n -> JS n -> JSStmt n n
+  JSForLoop :: T.Text -> JS n -> JS n -> [JS ('S n)] -> JSStmt n n
 
 data JSProg :: Nat -> * where
   JSEmptyProg :: JSProg 'Z
@@ -96,11 +106,13 @@ instance Emit (JS n) where
 
 instance Emit (JSStmt n m) where
   emit (JSLet x t) = "var " <> x <> " = " <> emit t <> ";\n"
-  emit (JSFunDef f args body) =
-    "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n\treturn "
+  emit (JSFunDef f args prog body) =
+    "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n"
+    <> emit prog <> "\n\treturn "
     <> emit body <> ";\n}\n"
-  emit (JSFunDefRec f args body) =
-    "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n\treturn "
+  emit (JSFunDefRec f args prog body) =
+    "function " <> f <> "(" <> T.intercalate ", " (toList args) <> ") {\n"
+    <> emit prog <> "\treturn "
     <> emit body <> ";\n}\n"
 
 instance Emit (JSProg n) where

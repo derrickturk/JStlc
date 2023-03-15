@@ -110,10 +110,10 @@ compileStmt' :: NameCtxt before
              -> Stmt before after
              -> (JSStmt (VLength before) (VLength after), NameCtxt after)
 compileStmt' c (Define f (Lam x _ body)) = 
-  (JSFunDef f (x :> VNil) (compile' (x :> c) body), f :> c)
+  (JSFunDef f (x :> VNil) JSEmptyProg (compile' (x :> c) body), f :> c)
 compileStmt' c (Define x t) = (JSLet x (compile' c t), x :> c)
 compileStmt' c (DefineRec f _ (Lam x _ body)) =
-  (JSFunDefRec f (x :> VNil) (compile' (x :> f :> c) body), f :> c)
+  (JSFunDefRec f (x :> VNil) JSEmptyProg (compile' (x :> f :> c) body), f :> c)
 compileStmt' c (DefineRec x ty t) =
   (JSLet x (compile' c (Fix (Lam x ty t))), x :> c)
 
